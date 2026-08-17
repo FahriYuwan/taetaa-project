@@ -1,0 +1,187 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SKU {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  type         SKUType
+  sellingPrice Float?   // for PACKAGE only
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  bomComponents BOMComponent[] @relation("BOMParent")
+  bomUsedIn     BOMComponent[] @relation("BOMChild")
+  purchases     Purchase[]
+  inventory     Inventory[]
+  sales         Sale[]
+  productionOutputs ProductionOutput[]
+  productionInputs  ProductionInput[]
+}
+
+enum SKUType {
+  RAW
+  WIP
+  PACKAGE
+}
+
+model BOMComponent {
+  id       String @id @default(cuid())
+  parentId String // PACKAGE or WIP SKU
+  childId  String // RAW or WIP component SKU
+  quantity Float  // qty needed per parent unit
+
+  parent SKU @relation("BOMParent", fields: [parentId], references: [id], onDelete: Cascade)
+  child  SKU @relation("BOMChild", fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, childId])
+  @@index([childId])
+}
+
+model Purchase {
+  id          String   @id @default(cuid())
+  date        DateTime
+  skuId       String
+  qty         Float
+  unitPrice   Float
+  total       Float    @default(0)
+  supplier    String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sku SKU @relation(fields: [skuId], references: [id], onDelete: Cascade)
+
+  @@index([date])
+  @@index([skuId])
+}
+
+model Inventory {
+  id        String   @id @default(cuid())
+  date      DateTime
+  skuId     String
+  movement  Float    // positive = in, negative = out
+  type      MovementType // PURCHASE, PRODUCTION, SALE, ADJUSTMENT, BREAKAGE
+  reference String?  // reference ID (Purchase, Production, Sale ID)
+  createdAt DateTime @default(now())
+
+  sku SKU @relation(fields: [skuId], references: [id], onDelete: Cascade)
+
+  @@index([date])
+  @@index([skuId])
+}
+
+enum MovementType {
+  PURCHASE
+  PRODUCTION
+  SALE
+  ADJUSTMENT
+  BREAKAGE
+  RETURN
+}
+
+model Production {
+  id           String   @id @default(cuid())
+  date         DateTime
+  outputId     String   @unique // FK to ProductionOutput
+  outputQty    Float
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  output ProductionOutput @relation(fields: [outputId], references: [id], onDelete: Cascade)
+  inputs ProductionInput[]
+
+  @@index([date])
+}
+
+model ProductionOutput {
+  id          String       @id @default(cuid())
+  skuId       String
+  production  Production?
+  
+  sku         SKU          @relation(fields: [skuId], references: [id], onDelete: Cascade)
+
+  @@index([skuId])
+}
+
+
+model ProductionInput {
+  id           String   @id @default(cuid())
+  productionId String
+  inputSkuId   String
+  qtyUsed      Float
+  production   Production @relation(fields: [productionId], references: [id], onDelete: Cascade)
+  inputSku     SKU        @relation(fields: [inputSkuId], references: [id], onDelete: Cascade)
+
+  @@index([productionId])
+}
+
+model Sale {
+  id            String   @id @default(cuid())
+  date          DateTime
+  skuId         String
+  qty           Float
+  unitPrice     Float
+  total         Float    @default(0)
+  channel       Channel  // SHOPEE, TIKTOK, OFFLINE, AFFILIATE
+  orderId       String?
+  fee           Float    @default(0) // marketplace fee
+  netRevenue    Float    @default(0) // total - fee
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sku SKU @relation(fields: [skuId], references: [id], onDelete: Cascade)
+
+  @@index([date])
+  @@index([skuId])
+}
+
+enum Channel {
+  SHOPEE
+  TIKTOK
+  OFFLINE
+  AFFILIATE
+}
+
+model Marketing {
+  id       String   @id @default(cuid())
+  date     DateTime
+  channel  Channel
+  cost     Float
+  activity String?
+  notes    String?
+  createdAt DateTime @default(now())
+}
+
+model Return {
+  id       String   @id @default(cuid())
+  date     DateTime
+  saleId   String
+  qty      Float
+  reason   String?
+  createdAt DateTime @default(now())
+}
+
+model SKUCostHistory {
+  id         String   @id @default(cuid())
+  skuId      String   @unique
+  avgCost    Float   @default(0) // weighted average cost
+  stock      Float   @default(0) // current stock
+  updatedAt  DateTime @updatedAt
+}
