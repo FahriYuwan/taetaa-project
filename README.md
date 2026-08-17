@@ -11,12 +11,16 @@ Sistem manajemen inventory, produksi, dan penjualan untuk bisnis manufaktur berb
 
 ## 📸 Screenshot / Demo
 
-> [!TIP]
-> Masukkan screenshot dashboard utama di bawah ini untuk presentasi yang lebih menarik.
-> Simpan gambar di folder `docs/images/dashboard.png` lalu update link di bawah.
+[//]: # (> [!TIP])
 
-![Dashboard Utama](docs/images/dashboard.png)
-*(Screenshot Placeholder - Harap isi manual)*
+[//]: # (> Masukkan screenshot dashboard utama di bawah ini untuk presentasi yang lebih menarik.)
+
+[//]: # (> Simpan gambar di folder `docs/images/dashboard.png` lalu update link di bawah.)
+
+[//]: # ()
+[//]: # (![Dashboard Utama]&#40;docs/images/dashboard.png&#41;)
+
+[//]: # (*&#40;Screenshot Placeholder - Harap isi manual&#41;*)
 
 ---
 
@@ -171,8 +175,3 @@ Project ini bersifat **Internal / Proprietary**. Kontribusi eksternal saat ini t
 **Proprietary** — Digunakan terbatas untuk keperluan internal Taetaa Company saja. Penggunaan, penyalinan, atau distribusi tanpa izin tertulis dari pemilik project sangat dilarang.
 
 ---
-
-## 📧 Kontak
-
-**Maintainer**: [Nama Anda/Tim IT] - [email@perusahaan.com]
-Project Link: [https://github.com/username/taetaa-project](https://github.com/username/taetaa-project)

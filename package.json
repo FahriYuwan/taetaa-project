@@ -4,7 +4,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed:demo": "npx tsx prisma/seed-demo.ts"
+    "seed:demo": "npx tsx prisma/seed-demo.ts",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed-demo.ts"
