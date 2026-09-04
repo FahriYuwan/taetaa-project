@@ -6,6 +6,14 @@ import { KPICard } from '@/components/dashboard/KPICard';
 import { Badge } from '@/components/ui/Button';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
+import { 
+  FiPackage, 
+  FiActivity, 
+  FiTrendingUp, 
+  FiTrendingDown, 
+  FiAlertCircle, 
+  FiDatabase 
+} from 'react-icons/fi';
 
 interface InventoryItem {
   id: string;
@@ -73,6 +81,21 @@ export default function InventoryDashboardPage() {
     return matchesSearch && matchesType;
   }) || [];
 
+  const top5ItemsSold = data?.items
+    .slice()
+    .sort((a, b) => b.keluarJual - a.keluarJual)
+    .slice(0, 5);
+
+  const top5LeastSoldItems = data?.items
+    .slice()
+    .sort((a, b) => a.keluarJual - b.keluarJual)
+    .slice(0, 5);
+
+  const top5PriorityRestock = data?.items
+    .slice()
+    .sort((a, b) => a.stockAkhir - b.stockAkhir)
+    .slice(0, 5);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: colors.neutral.bg }}>
       <div className="bg-white border-b p-6 flex justify-between items-start gap-6" style={{ borderColor: colors.neutral.border }}>
@@ -118,28 +141,104 @@ export default function InventoryDashboardPage() {
       </div>
 
       <div className="flex-1 overflow-auto p-6 space-y-6">
-        {/* KPI Cards */}
-        <div className="grid grid-cols-4 gap-4">
+        {/* Row 1: Financial KPI (Main) */}
+        <div className="grid grid-cols-4 gap-6">
+          <div className="col-span-2">
+            <KPICard
+              label="Nilai Total Inventory"
+              value={`Rp ${(data?.kpi.totalValue || 0).toLocaleString('id-ID')}`}
+              description="Total akumulasi nilai stock akhir dari seluruh kategori SKU (Raw, WIP, Package)."
+              valueColor={colors.brand[500]}
+              icon={<FiDatabase size={24} />}
+            />
+          </div>
           <KPICard
-            label="NILAI TOTAL"
-            value={`Rp ${(data?.kpi.totalValue || 0).toLocaleString('id-ID')}`}
-            description="—"
-            valueColor={colors.brand[500]}
-          />
-          <KPICard
-            label="NILAI RAW"
+            label="Raw Material Value"
             value={`Rp ${(data?.kpi.raw.value || 0).toLocaleString('id-ID')}`}
-            description={`${data?.kpi.raw.count || 0} SKU`}
+            description={`${data?.kpi.raw.count || 0} SKU Bahan Baku`}
+            icon={<FiPackage size={20} />}
           />
           <KPICard
-            label="NILAI WIP"
-            value={`Rp ${(data?.kpi.wip.value || 0).toLocaleString('id-ID')}`}
-            description={`${data?.kpi.wip.count || 0} SKU`}
+            label="WIP & Package Value"
+            value={`Rp ${((data?.kpi.wip.value || 0) + (data?.kpi.package.value || 0)).toLocaleString('id-ID')}`}
+            description={`${(data?.kpi.wip.count || 0) + (data?.kpi.package.count || 0)} SKU Barang Jadi/Kemas`}
+            icon={<FiActivity size={20} />}
+          />
+        </div>
+
+        {/* Row 2: Analytics (Secondary) */}
+        <div className="grid grid-cols-3 gap-6">
+          <KPICard
+            label="Top 5 Terlaris"
+            isList={true}
+            icon={<FiTrendingUp size={18} />}
+            value={
+              top5ItemsSold?.map((item, index) => (
+                <div
+                  key={item.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    color: index === 0 ? colors.brand[500] : 'inherit',
+                    fontWeight: index === 0 ? '800' : '400',
+                  }}
+                >
+                  <span>{index + 1}. {item.name}</span>
+                  <span style={{ opacity: 0.6, fontSize: '11px' }}>({item.keluarJual})</span>
+                </div>
+              )) || '-'
+            }
+            description="Berdasarkan volume keluar jual tertinggi"
           />
           <KPICard
-            label="NILAI PACKAGE"
-            value={`Rp ${(data?.kpi.package.value || 0).toLocaleString('id-ID')}`}
-            description={`${data?.kpi.package.count || 0} SKU`}
+            label="Top 5 Penjualan Terendah"
+            isList={true}
+            icon={<FiTrendingDown size={18} />}
+            value={
+              top5LeastSoldItems?.map((item, index) => (
+                <div
+                  key={item.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    color: index === 0 ? colors.brand[500] : 'inherit',
+                    fontWeight: index === 0 ? '800' : '400',
+                  }}
+                >
+                  <span>{index + 1}. {item.name}</span>
+                  <span style={{ opacity: 0.6, fontSize: '11px' }}>({item.keluarJual})</span>
+                </div>
+              )) || '-'
+            }
+            description="SKU dengan pergerakan keluar paling lambat"
+          />
+          <KPICard
+            label="Prioritas Restock"
+            isList={true}
+            icon={<FiAlertCircle size={18} />}
+            value={
+              top5PriorityRestock?.map((item, index) => (
+                <div
+                  key={item.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    color: item.stockAkhir <= 0 ? colors.error : index === 0 ? colors.brand[500] : 'inherit',
+                    fontWeight: index === 0 ? '800' : '400',
+                  }}
+                >
+                  <span>{index + 1}. {item.name}</span>
+                  <span style={{ 
+                    fontWeight: '700', 
+                    fontSize: '12px',
+                    color: item.stockAkhir <= 0 ? colors.error : 'inherit'
+                  }}>
+                    {item.stockAkhir}
+                  </span>
+                </div>
+              )) || '-'
+            }
+            description="SKU dengan sisa stok terendah saat ini"
           />
         </div>
 
@@ -204,7 +303,7 @@ export default function InventoryDashboardPage() {
                       <td className="px-4 py-3 text-right text-green-600">+{item.masukProduksi.toLocaleString('id-ID')}</td>
                       <td className="px-4 py-3 text-right text-orange-600">-{item.keluarProduksi.toLocaleString('id-ID')}</td>
                       <td className="px-4 py-3 text-right text-red-600">-{item.keluarJual.toLocaleString('id-ID')}</td>
-                      <td className={`px-4 py-3 text-right font-bold ${item.stockAkhir < 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                      <td className={`px-4 py-3 text-right font-bold ${item.stockAkhir <= 10 ? 'text-red-600' : 'text-gray-900'}`}>
                         {item.stockAkhir.toLocaleString('id-ID')}
                       </td>
                       <td className="px-4 py-3 text-right">Rp {item.avgCost.toLocaleString('id-ID')}</td>
