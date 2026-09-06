@@ -223,7 +223,7 @@ export default function InventoryDashboardPage() {
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    color: item.stockAkhir <= 0 ? colors.error : index === 0 ? colors.brand[500] : 'inherit',
+                    color: item.stockAkhir <= 0 ? colors.semantic.red : index === 0 ? colors.brand[500] : 'inherit',
                     fontWeight: index === 0 ? '800' : '400',
                   }}
                 >
@@ -231,7 +231,7 @@ export default function InventoryDashboardPage() {
                   <span style={{ 
                     fontWeight: '700', 
                     fontSize: '12px',
-                    color: item.stockAkhir <= 0 ? colors.error : 'inherit'
+                    color: item.stockAkhir <= 0 ? colors.semantic.red : 'inherit'
                   }}>
                     {item.stockAkhir}
                   </span>
