@@ -19,18 +19,19 @@ model SKU {
   code         String   @unique
   name         String
   type         SKUType
-  sellingPrice Float?   // for PACKAGE only
+  sellingPrice Float? // for PACKAGE only
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   // Relations
-  bomComponents BOMComponent[] @relation("BOMParent")
-  bomUsedIn     BOMComponent[] @relation("BOMChild")
-  purchases     Purchase[]
-  inventory     Inventory[]
-  sales         Sale[]
+  bomComponents     BOMComponent[]     @relation("BOMParent")
+  bomUsedIn         BOMComponent[]     @relation("BOMChild")
+  purchases         Purchase[]
+  inventory         Inventory[]
+  sales             Sale[]
   productionOutputs ProductionOutput[]
   productionInputs  ProductionInput[]
+  breakages         Breakage[]
 }
 
 enum SKUType {
@@ -43,7 +44,7 @@ model BOMComponent {
   id       String @id @default(cuid())
   parentId String // PACKAGE or WIP SKU
   childId  String // RAW or WIP component SKU
-  quantity Float  // qty needed per parent unit
+  quantity Float // qty needed per parent unit
 
   parent SKU @relation("BOMParent", fields: [parentId], references: [id], onDelete: Cascade)
   child  SKU @relation("BOMChild", fields: [childId], references: [id], onDelete: Cascade)
@@ -53,16 +54,16 @@ model BOMComponent {
 }
 
 model Purchase {
-  id          String   @id @default(cuid())
-  date        DateTime
-  skuId       String
-  qty         Float
-  unitPrice   Float
-  total       Float    @default(0)
-  supplier    String?
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  date      DateTime
+  skuId     String
+  qty       Float
+  unitPrice Float
+  total     Float    @default(0)
+  supplier  String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   sku SKU @relation(fields: [skuId], references: [id], onDelete: Cascade)
 
@@ -71,13 +72,13 @@ model Purchase {
 }
 
 model Inventory {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
   date      DateTime
   skuId     String
-  movement  Float    // positive = in, negative = out
+  movement  Float // positive = in, negative = out
   type      MovementType // PURCHASE, PRODUCTION, SALE, ADJUSTMENT, BREAKAGE
-  reference String?  // reference ID (Purchase, Production, Sale ID)
-  createdAt DateTime @default(now())
+  reference String? // reference ID (Purchase, Production, Sale ID)
+  createdAt DateTime     @default(now())
 
   sku SKU @relation(fields: [skuId], references: [id], onDelete: Cascade)
 
@@ -95,33 +96,32 @@ enum MovementType {
 }
 
 model Production {
-  id           String   @id @default(cuid())
-  date         DateTime
-  outputId     String   @unique // FK to ProductionOutput
-  outputQty    Float
-  notes        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id        String   @id @default(cuid())
+  date      DateTime
+  outputId  String   @unique // FK to ProductionOutput
+  outputQty Float
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  output ProductionOutput @relation(fields: [outputId], references: [id], onDelete: Cascade)
+  output ProductionOutput  @relation(fields: [outputId], references: [id], onDelete: Cascade)
   inputs ProductionInput[]
 
   @@index([date])
 }
 
 model ProductionOutput {
-  id          String       @id @default(cuid())
-  skuId       String
-  production  Production?
-  
-  sku         SKU          @relation(fields: [skuId], references: [id], onDelete: Cascade)
+  id         String      @id @default(cuid())
+  skuId      String
+  production Production?
+
+  sku SKU @relation(fields: [skuId], references: [id], onDelete: Cascade)
 
   @@index([skuId])
 }
 
-
 model ProductionInput {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   productionId String
   inputSkuId   String
   qtyUsed      Float
@@ -132,19 +132,19 @@ model ProductionInput {
 }
 
 model Sale {
-  id            String   @id @default(cuid())
-  date          DateTime
-  skuId         String
-  qty           Float
-  unitPrice     Float
-  total         Float    @default(0)
-  channel       Channel  // SHOPEE, TIKTOK, OFFLINE, AFFILIATE
-  orderId       String?
-  fee           Float    @default(0) // marketplace fee
-  netRevenue    Float    @default(0) // total - fee
-  notes         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id         String   @id @default(cuid())
+  date       DateTime
+  skuId      String
+  qty        Float
+  unitPrice  Float
+  total      Float    @default(0)
+  channel    Channel // SHOPEE, TIKTOK, OFFLINE, AFFILIATE
+  orderId    String?
+  fee        Float    @default(0) // marketplace fee
+  netRevenue Float    @default(0) // total - fee
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   sku SKU @relation(fields: [skuId], references: [id], onDelete: Cascade)
 
@@ -160,28 +160,45 @@ enum Channel {
 }
 
 model Marketing {
-  id       String   @id @default(cuid())
-  date     DateTime
-  channel  Channel
-  cost     Float
-  activity String?
-  notes    String?
+  id        String   @id @default(cuid())
+  date      DateTime
+  channel   Channel
+  cost      Float
+  activity  String?
+  notes     String?
   createdAt DateTime @default(now())
 }
 
 model Return {
-  id       String   @id @default(cuid())
-  date     DateTime
-  saleId   String
-  qty      Float
-  reason   String?
+  id        String   @id @default(cuid())
+  date      DateTime
+  saleId    String
+  qty       Float
+  reason    String?
   createdAt DateTime @default(now())
 }
 
 model SKUCostHistory {
-  id         String   @id @default(cuid())
-  skuId      String   @unique
-  avgCost    Float   @default(0) // weighted average cost
-  stock      Float   @default(0) // current stock
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid())
+  skuId     String   @unique
+  avgCost   Float    @default(0) // weighted average cost
+  stock     Float    @default(0) // current stock
+  updatedAt DateTime @updatedAt
+}
+
+model Breakage {
+  id        String   @id @default(cuid())
+  date      DateTime
+  skuId     String
+  qty       Float
+  unitPrice Float // Akan diisi otomatis dari avgCost SKUCostHistory saat simpan
+  total     Float // qty * unitPrice
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sku SKU @relation(fields: [skuId], references: [id], onDelete: Cascade)
+
+  @@index([date])
+  @@index([skuId])
 }

@@ -98,47 +98,43 @@ export default function InventoryDashboardPage() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: colors.neutral.bg }}>
-      <div className="bg-white border-b p-6 flex justify-between items-start gap-6" style={{ borderColor: colors.neutral.border }}>
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-widest text-gray-500 mb-1">TAETAA COMPANY SISTEM</p>
-          <h1 className="text-3xl font-bold text-gray-900 mb-1">Dashboard Inventory</h1>
-          <p className="text-sm text-gray-500">Stock awal → masuk → keluar → stock akhir per SKU.</p>
-        </div>
-
-        <div className="flex gap-4 items-end">
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-gray-400 uppercase">Periode Dari</label>
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="block px-3 py-2 border rounded text-sm bg-white"
-              style={{ borderColor: colors.neutral.border }}
-            />
+      <PageHeader
+        title="Dashboard Inventory"
+        subtitle="Stock awal → masuk → keluar → stock akhir per SKU."
+        actions={
+          <div className="flex flex-wrap gap-4 items-end bg-gray-50 p-3 rounded-lg border border-gray-100">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-gray-400 uppercase">Periode</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="px-2 py-1.5 border rounded text-xs bg-white"
+                />
+                <span className="text-gray-400">s/d</span>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="px-2 py-1.5 border rounded text-xs bg-white"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-1 border-l pl-4 ml-2">
+              <label className="text-[10px] font-bold text-gray-400 uppercase">Pencarian</label>
+              <input
+                type="text"
+                placeholder="Cari SKU..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="block px-3 py-1.5 border rounded text-xs bg-white w-40"
+              />
+            </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-gray-400 uppercase">Sampai</label>
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="block px-3 py-2 border rounded text-sm bg-white"
-              style={{ borderColor: colors.neutral.border }}
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-gray-400 uppercase">Cari SKU</label>
-            <input
-              type="text"
-              placeholder="Cari SKU..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="block px-4 py-2 border rounded text-sm bg-white w-48"
-              style={{ borderColor: colors.neutral.border }}
-            />
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="flex-1 overflow-auto p-6 space-y-6">
         {/* Row 1: Financial KPI (Main) */}

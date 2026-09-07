@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     const { date, skuId, qty, unitPrice, supplier, notes } = body;
 
     if (!date || !skuId || !qty || !unitPrice) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      return NextResponse.json({ error: 'Terdapat Field yang belum diisi!' }, { status: 400 });
     }
 
     const total = qty * unitPrice;
@@ -89,6 +89,6 @@ export async function POST(req: Request) {
     return NextResponse.json(result, { status: 201 });
   } catch (error: any) {
     console.error('Purchase creation error:', error);
-    return NextResponse.json({ error: 'Failed to record purchase' }, { status: 500 });
+    return NextResponse.json({ error: 'Gagal menyimpan data Pembelian' }, { status: 500 });
   }
 }

@@ -28,16 +28,24 @@ export default function PembelianRawPage() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
-  const { showToast } = useToast();
+  const [search, setSearch] = useState('');
+
+  // Date filters
+  const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [fromDate, setFromDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
 
   useEffect(() => {
     fetchPurchases();
-  }, []);
+  }, [fromDate, toDate]);
 
   async function fetchPurchases() {
     try {
       setLoading(true);
-      const res = await fetch('/api/purchases');
+      const res = await fetch(`/api/purchases?from=${fromDate}&to=${toDate}`);
       if (res.ok) {
         const data = await res.json();
         setPurchases(data);
@@ -48,6 +56,12 @@ export default function PembelianRawPage() {
       setLoading(false);
     }
   }
+
+  const filteredItems = purchases?.filter(item => {
+    const matchesSearch = item.sku.code.toLowerCase().includes(search.toLowerCase()) ||
+                         item.sku.name.toLowerCase().includes(search.toLowerCase());
+    return matchesSearch;
+  }) || [];
 
   async function handleAddPurchase(formData: any) {
     try {
@@ -78,13 +92,47 @@ export default function PembelianRawPage() {
         title="Pembelian RAW"
         subtitle="Catat pembelian bahan baku. Sistem otomatis update HPP rata-rata (Weighted Average)."
         actions={
-          <div className="flex gap-3">
-            <Button variant="secondary" icon="📋" onClick={() => setShowBulkModal(true)}>
-              Bulk Paste
-            </Button>
-            <Button variant="primary" icon="➕" onClick={() => setShowAddModal(true)}>
-              Catat Pembelian
-            </Button>
+          <div className="flex flex-col items-end gap-4">
+            <div className="flex gap-2">
+              <Button variant="secondary" icon="📋" onClick={() => setShowBulkModal(true)}>
+                Bulk Paste
+              </Button>
+              <Button variant="primary" icon="➕" onClick={() => setShowAddModal(true)}>
+                Catat Pembelian
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap gap-4 items-end bg-gray-50 p-3 rounded-lg border border-gray-100">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-400 uppercase">Periode</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                    className="px-2 py-1.5 border rounded text-xs bg-white"
+                  />
+                  <span className="text-gray-400">s/d</span>
+                  <input
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                    className="px-2 py-1.5 border rounded text-xs bg-white"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-1 border-l pl-4 ml-2">
+                <label className="text-[10px] font-bold text-gray-400 uppercase">Pencarian</label>
+                <input
+                  type="text"
+                  placeholder="Cari SKU atau Nama..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="block px-3 py-1.5 border rounded text-xs bg-white w-40"
+                />
+              </div>
+            </div>
           </div>
         }
       />
@@ -123,7 +171,7 @@ export default function PembelianRawPage() {
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-gray-400">Loading data...</td>
                 </tr>
-              ) : purchases.length === 0 ? (
+              ) : filteredItems.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-20 text-center">
                     <p className="text-gray-400 mb-2">Belum ada pembelian.</p>
@@ -136,7 +184,7 @@ export default function PembelianRawPage() {
                   </td>
                 </tr>
               ) : (
-                purchases.map((p) => (
+                filteredItems.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">{new Date(p.date).toLocaleDateString('id-ID')}</td>
                     <td className="px-6 py-4">

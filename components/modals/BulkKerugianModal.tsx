@@ -22,7 +22,7 @@ export function BulkKerugianModal({ isOpen, onClose, onSuccess }: BulkKerugianMo
     if (!text.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/purchases/bulk', {
+      const res = await fetch('/api/kerugian-pengeluaran/lost-breakage/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),

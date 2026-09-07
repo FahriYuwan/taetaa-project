@@ -32,17 +32,17 @@ export function AddKerugianModal({
       fetchSkus();
       setFormData({
         date: new Date().toISOString().split('T')[0],
-        skuId: '',
-        qty: 0,
-        unitPrice: 0,
-        notes: '',
+        skuId: '', //Pilihan
+        qty: 0, // Jumlah barang yang dikurangi
+        unitPrice: 0, // Harga satuan yang dikurangi mengambil dari SKUCostHistory
+        notes: '', // Keterangan benda yang dikurangi
       });
     }
   }, [isOpen]);
 
   async function fetchSkus() {
     try {
-      const res = await fetch('/api/skus?type=RAW');
+      const res = await fetch('/api/skus');
       if (res.ok) {
         const data = await res.json();
         setSkus(data);
@@ -60,17 +60,54 @@ export function AddKerugianModal({
     e.preventDefault();
     setError('');
 
-    if (!formData.skuId || formData.qty <= 0 || formData.unitPrice <= 0) {
-      setError('Harap isi SKU, Qty, dan Harga Satuan dengan benar');
+    if (!formData.skuId) {
+      setError('Harap isi SKU dengan benar');
+      return;
+    }
+    if (formData.qty <= 0) {
+      setError('Harap isi jumlah benda yang dikurangi');
+      return;
+    }
+    if (!formData.notes) {
+      setError('Harap isi catatan benda yang dikurangi');
       return;
     }
 
     try {
       await onSubmit(formData);
     } catch (err: any) {
-      setError(err.message || 'Gagal menyimpan pembelian');
+      setError(err.message || 'Gagal menyimpan laporan kerugian. Harap coba lagi.');
     }
   }
+
+  //Fungsi untuk mengambil harga satuan dari SKUCostHistory
+  const handleSkuChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedSkuId = e.target.value;
+
+    // 1. Update skuId dulu agar UI tidak lag
+    setFormData(prev => ({ ...prev, skuId: selectedSkuId }));
+
+    if (selectedSkuId) {
+      try {
+        // 2. Fetch detail SKU untuk mendapatkan avgCost (HPP)
+        const res = await fetch(`/api/skus/${selectedSkuId}`);
+        if (res.ok) {
+          const skuData = await res.json();
+
+          // 3. Masukkan avgCost ke dalam unitPrice secara otomatis
+          setFormData(prev => ({
+            ...prev,
+            unitPrice: skuData.avgCost || 0
+          }));
+        }
+      } catch (err) {
+        console.error("Gagal mengambil HPP SKU:", err);
+      }
+    } else {
+      // Reset harga jika SKU dikosongkan
+      setFormData(prev => ({ ...prev, unitPrice: 0 }));
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -105,11 +142,11 @@ export function AddKerugianModal({
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
-              Pilih Bahan Baku (RAW)
+              Pilih Barang
             </label>
             <select
               value={formData.skuId}
-              onChange={(e) => setFormData({ ...formData, skuId: e.target.value })}
+              onChange={handleSkuChange}
               className="w-full px-3 py-2 rounded border text-sm bg-white"
               style={{ borderColor: colors.neutral.border }}
               disabled={isLoading}
@@ -124,7 +161,7 @@ export function AddKerugianModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
-                Qty
+                Jumlah Kerugian
               </label>
               <input
                 type="number"
@@ -144,19 +181,18 @@ export function AddKerugianModal({
               <input
                 type="number"
                 value={formData.unitPrice || ''}
-                onChange={(e) => setFormData({ ...formData, unitPrice: parseInt(e.target.value) || 0 })}
-                className="w-full px-3 py-2 rounded border text-sm"
+                className="w-full px-3 py-2 rounded border text-sm bg-gray-100 cursor-not-allowed" // Tambah bg-gray agar terlihat terkunci
                 style={{ borderColor: colors.neutral.border }}
-                disabled={isLoading}
+                readOnly
                 placeholder="0"
               />
             </div>
           </div>
 
           <div className="p-3 rounded bg-gray-50 border border-dashed flex justify-between items-center" style={{ borderColor: colors.neutral.border }}>
-            <span className="text-xs font-bold uppercase text-gray-500">Total Pembelian</span>
-            <span className="text-lg font-bold" style={{ color: colors.brand[500] }}>
-              Rp {total.toLocaleString('id-ID')}
+            <span className="text-xs font-bold uppercase text-gray-500">Total Kerugian</span>
+            <span className="text-lg font-bold" style={{ color: colors.semantic.red }}>
+              Rp -{total.toLocaleString('id-ID')}
             </span>
           </div>
 
