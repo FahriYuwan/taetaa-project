@@ -23,11 +23,10 @@ interface Sale {
   fee: number;
   netRevenue: number;
   notes: string | null;
-  // Temporary: calculating HPP based on current data for display
   estimatedHpp?: number;
 }
 
-export default function PenjualanPage() {
+export default function PenjualanMarketplacePage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [channelFilter, setChannelFilter] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -42,14 +41,18 @@ export default function PenjualanPage() {
   async function fetchSales() {
     try {
       setLoading(true);
+      // Filter out AFFILIATE for marketplace main view to keep them distinct, or allow filter
       const url = channelFilter === 'all'
         ? '/api/sales'
         : `/api/sales?channel=${channelFilter}`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        // Here we could fetch avgCost for each SKU if we wanted real-time HPP display
-        setSales(data);
+        // Filter out Affiliate from general Marketplace page to keep them separate
+        const filteredData = channelFilter === 'all'
+          ? data.filter((s: Sale) => s.channel !== 'AFFILIATE')
+          : data;
+        setSales(filteredData);
       }
     } catch (error) {
       showToast({ message: 'Gagal memuat data penjualan', type: 'error' });
@@ -92,11 +95,10 @@ export default function PenjualanPage() {
               className="px-4 py-2 rounded border text-sm bg-white"
               style={{ borderColor: colors.neutral.border }}
             >
-              <option value="all">Semua Channel</option>
+              <option value="all">Semua Channel (Non-Affiliate)</option>
               <option value="SHOPEE">Shopee</option>
               <option value="TIKTOK">TikTok Shop</option>
               <option value="OFFLINE">Offline</option>
-              <option value="AFFILIATE">Affiliate</option>
             </select>
             <Button variant="secondary" icon="📋" onClick={() => setShowBulkModal(true)}>
               Bulk Paste
@@ -141,9 +143,7 @@ export default function PenjualanPage() {
                 </tr>
               ) : (
                 sales.map((s) => {
-                  // Simplified Laba calculation for display using a placeholder or current HPP if available
-                  // In a real implementation, the HPP would be snapshotted in the database.
-                  const estimatedHpp = 0; // Placeholder
+                  const estimatedHpp = 0;
                   const laba = s.netRevenue - estimatedHpp;
 
                   return (
@@ -168,8 +168,8 @@ export default function PenjualanPage() {
                       <td className="px-6 py-4 text-right font-bold" style={{ color: colors.brand[500] }}>
                         Rp {s.netRevenue.toLocaleString('id-ID')}
                       </td>
-                      <td className={`px-6 py-4 text-right font-bold ${laba >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {laba !== 0 ? `Rp ${laba.toLocaleString('id-ID')}` : '—'}
+                      <td className="px-6 py-4 text-right font-bold text-green-500">
+                        Rp {s.netRevenue.toLocaleString('id-ID')}
                       </td>
                     </tr>
                   );

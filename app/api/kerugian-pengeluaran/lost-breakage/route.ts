@@ -1,20 +1,42 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/db.ts';
-import {MovementType} from "@prisma/client"; // Import database konektor
+import prisma from '@/lib/db';
+import {MovementType, BreakageCategory} from "@prisma/client";
 
 // Fungsi untuk mengambil data (GET)
 export async function GET(req: Request) {
     try {
-        // 1. Ambil data dari database
+        const { searchParams } = new URL(req.url);
+        const fromDate = searchParams.get('from');
+        const toDate = searchParams.get('to');
+
+        let where = {};
+        if (fromDate && toDate) {
+            const to = new Date(toDate);
+            to.setHours(23, 59, 59, 999);
+            where = {
+                date: {
+                    gte: new Date(fromDate),
+                    lte: to,
+                },
+            };
+        }
+
         const data = await prisma.breakage.findMany({
-            include: { sku: true },
+            where,
+            include: { 
+                sku: {
+                    select: {
+                        code: true,
+                        name: true,
+                        hppPrice: true
+                    }
+                } 
+            },
             orderBy: { date: 'desc' },
         });
 
-        // 2. Kirim respon sukses
         return NextResponse.json(data);
     } catch (error) {
-        // 3. Tangani jika ada error
         return NextResponse.json({ error: 'Terjadi kesalahan' }, { status: 500 });
     }
 }
@@ -22,60 +44,61 @@ export async function GET(req: Request) {
 // Fungsi untuk mengirim/simpan data (POST)
 export async function POST(req: Request) {
     try {
-        // 1. Ambil data dari body request (input user)
         const body = await req.json();
-        const { date, skuId, qty, unitPrice, notes } = body;
+        const { date, skuId, qty, category, notes } = body;
 
-        // 2. Validasi sederhana
-        if (!date || !skuId || !qty || !unitPrice || !notes) {
-            return NextResponse.json({ error: 'Terdapat Field yang belum diisi!' }, { status: 400 });
+        if (!date || !skuId || !qty || !category) {
+            return NextResponse.json({ error: 'Field date, skuId, qty, dan kategori wajib diisi!' }, { status: 400 });
         }
 
-        const total = qty * unitPrice;
-
-        // 3. Simpan ke database
         const result = await prisma.$transaction(async (tx) => {
-            // 1. Create the breakage record / saves to breakage table
+            const sku = await tx.sKU.findUnique({
+                where: { id: skuId },
+                select: { hppPrice: true }
+            });
+
+            const finalUnitPrice = sku?.hppPrice || 0;
+            const total = qty * finalUnitPrice;
+
             const breakage = await tx.breakage.create({
                 data: {
                     date: new Date(date),
                     skuId,
                     qty,
-                    unitPrice,
+                    category: category as BreakageCategory,
+                    unitPrice: finalUnitPrice,
                     total,
-                    notes,
+                    notes: notes || 'Breakage',
                 },
+                include: { sku: true }
             });
-            // 2. Add to Inventory Movement
+
             await tx.inventory.create({
                 data: {
                     date: new Date(date),
                     skuId,
+                    qty: -qty, // Some parts of system use 'movement', let's check
                     movement: -qty,
                     type: MovementType.BREAKAGE,
                     reference: breakage.id,
                 },
-            })
-
-            // 3. Update SKUCostHistory (Weighted Average HPP)
-             const costHistory = await tx.sKUCostHistory.findUnique({
-                where: { skuId },
             });
 
+            const costHistory = await tx.sKUCostHistory.findUnique({
+                where: { skuId },
+            });
             if (costHistory) {
-                const oldStock = costHistory.stock;
-                const newStock = oldStock - qty;
-
                 await tx.sKUCostHistory.update({
                     where: { skuId },
                     data: {
-                        stock: newStock
+                        stock: { decrement: qty }
                     },
                 });
-            } else {
-                console.error('SKU not found in cost history');
             }
-        })
+
+            return breakage;
+        });
+
         return NextResponse.json(result, { status: 201 });
     } catch (error) {
         console.error('Breakage creation error:', error);

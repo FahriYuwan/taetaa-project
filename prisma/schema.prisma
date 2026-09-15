@@ -19,6 +19,8 @@ model SKU {
   code         String   @unique
   name         String
   type         SKUType
+  productSize  Float?   @default(0) // in ml
+  hppPrice     Float?   @default(0)
   sellingPrice Float? // for PACKAGE only
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -32,25 +34,56 @@ model SKU {
   productionOutputs ProductionOutput[]
   productionInputs  ProductionInput[]
   breakages         Breakage[]
+  stockOpnameItems  StockOpnameItem[]
 }
 
 enum SKUType {
   RAW
-  WIP
+  PRODUCT
   PACKAGE
 }
 
 model BOMComponent {
-  id       String @id @default(cuid())
-  parentId String // PACKAGE or WIP SKU
-  childId  String // RAW or WIP component SKU
-  quantity Float // qty needed per parent unit
+  id               String            @id @default(cuid())
+  parentId         String // PRODUCT or PACKAGE SKU
+  childSkuId       String? // If child is another SKU (RAW or PRODUCT)
+  childKemasanId   String? // If child is from MasterItemKemasan
+  category         BOMCategory
+  quantity         Float // qty needed per parent unit
+  consumptionType  ConsumptionType   @default(AUTOMATIC)
+  
+  parent       SKU                 @relation("BOMParent", fields: [parentId], references: [id], onDelete: Cascade)
+  childSku     SKU?                @relation("BOMChild", fields: [childSkuId], references: [id], onDelete: Cascade)
+  childKemasan MasterItemKemasan?  @relation(fields: [childKemasanId], references: [id], onDelete: Cascade)
 
-  parent SKU @relation("BOMParent", fields: [parentId], references: [id], onDelete: Cascade)
-  child  SKU @relation("BOMChild", fields: [childId], references: [id], onDelete: Cascade)
+  @@index([childSkuId])
+  @@index([childKemasanId])
+}
 
-  @@unique([parentId, childId])
-  @@index([childId])
+enum BOMCategory {
+  RAW
+  PACKING
+  STIKER
+  SAFETY
+  DUS
+}
+
+enum ConsumptionType {
+  AUTOMATIC
+  MANUAL
+}
+
+model MasterItemKemasan {
+  id          String      @id @default(cuid())
+  code        String      @unique
+  name        String
+  category    BOMCategory
+  stock       Float       @default(0)
+  avgCost     Float       @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  bomUsedIn   BOMComponent[]
 }
 
 model Purchase {
@@ -186,11 +219,29 @@ model SKUCostHistory {
   updatedAt DateTime @updatedAt
 }
 
+model OtherExpense {
+  id        String          @id @default(cuid())
+  date      DateTime
+  category  ExpenseCategory
+  recipient String
+  amount    Float
+  notes     String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+enum ExpenseCategory {
+  BONUS
+  COMPLIMENT
+  LAINNYA
+}
+
 model Breakage {
-  id        String   @id @default(cuid())
+  id        String           @id @default(cuid())
   date      DateTime
   skuId     String
   qty       Float
+  category  BreakageCategory
   unitPrice Float // Akan diisi otomatis dari avgCost SKUCostHistory saat simpan
   total     Float // qty * unitPrice
   notes     String?
@@ -201,4 +252,35 @@ model Breakage {
 
   @@index([date])
   @@index([skuId])
+}
+
+model StockOpname {
+  id          String   @id @default(cuid())
+  date        DateTime
+  notes       String?
+  items       StockOpnameItem[]
+  createdAt   DateTime @default(now())
+}
+
+model StockOpnameItem {
+  id              String      @id @default(cuid())
+  opnameId        String
+  skuId           String
+  systemStock     Float
+  physicalStock   Float
+  diff            Float
+  checked         Boolean     @default(false)
+  notes           String?
+  
+  opname          StockOpname @relation(fields: [opnameId], references: [id], onDelete: Cascade)
+  sku             SKU         @relation(fields: [skuId], references: [id], onDelete: Cascade)
+
+  @@index([opnameId])
+}
+
+enum BreakageCategory {
+  GAGAL_QC
+  RUSAK
+  HILANG
+  LAINNYA
 }

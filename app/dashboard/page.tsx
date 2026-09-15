@@ -20,7 +20,7 @@ interface DashboardData {
     totalOrders: number;
     avgOrderValue: number;
     inventoryRaw: number;
-    inventoryWip: number;
+    inventoryProduct: number;
     inventoryPackage: number;
     totalPurchaseAmount: number;
   };
@@ -307,8 +307,8 @@ export default function DashboardPage() {
                 description="—"
               />
               <KPICard
-                label="NILAI INVENTORY WIP"
-                value={`Rp ${data.kpi.inventoryWip.toLocaleString('id-ID')}`}
+                label="NILAI INVENTORY PRODUCT"
+                value={`Rp ${data.kpi.inventoryProduct.toLocaleString('id-ID')}`}
                 valueColor={colors.neutral.textStrong}
                 description="—"
               />

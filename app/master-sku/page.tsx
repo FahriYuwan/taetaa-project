@@ -12,7 +12,8 @@ interface SKU {
   id: string;
   code: string;
   name: string;
-  type: 'RAW' | 'WIP' | 'PACKAGE';
+  type: 'RAW' | 'PRODUCT' | 'PACKAGE';
+  hppPrice?: number;
   sellingPrice?: number;
   bomComponents?: any[];
 }
@@ -124,7 +125,7 @@ export default function MasterSKUPage() {
   const counts = {
     all: skus.length,
     RAW: skus.filter(s => s.type === 'RAW').length,
-    WIP: skus.filter(s => s.type === 'WIP').length,
+    PRODUCT: skus.filter(s => s.type === 'PRODUCT').length,
     PACKAGE: skus.filter(s => s.type === 'PACKAGE').length,
   };
 
@@ -132,7 +133,7 @@ export default function MasterSKUPage() {
     <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: colors.neutral.bg }}>
       <PageHeader
         title="Master SKU"
-        subtitle="Kelola daftar produk RAW, WIP, dan PACKAGE beserta BOM"
+        subtitle="Kelola daftar produk RAW, PRODUCT, dan PACKAGE beserta BOM"
         actions={
           <div className="flex gap-3">
             <input
@@ -163,7 +164,7 @@ export default function MasterSKUPage() {
             className="flex gap-2 mb-6 p-4 rounded-t-lg"
             style={{ backgroundColor: colors.neutral.card, borderColor: colors.neutral.border }}
           >
-            {(['all', 'RAW', 'WIP', 'PACKAGE'] as const).map((tab) => (
+            {(['all', 'RAW', 'PRODUCT', 'PACKAGE'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setFilter(tab)}
@@ -174,7 +175,7 @@ export default function MasterSKUPage() {
                   boxShadow: filter === tab ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                 }}
               >
-                {tab === 'all' ? 'Semua' : tab} ({counts[tab === 'all' ? 'all' : tab]})
+                {tab === 'all' ? 'Semua' : (tab === 'PRODUCT' ? 'Product' : tab)} ({counts[tab === 'all' ? 'all' : tab]})
               </button>
             ))}
           </div>
@@ -197,6 +198,7 @@ export default function MasterSKUPage() {
                     <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>SKU CODE</th>
                     <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>NAMA</th>
                     <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>TIPE</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>HARGA HPP</th>
                     <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>HARGA JUAL</th>
                     <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>BOM</th>
                     <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>AKSI</th>
@@ -208,13 +210,16 @@ export default function MasterSKUPage() {
                       <td className="px-6 py-4 text-sm" style={{ color: colors.neutral.textStrong }}>{sku.code}</td>
                       <td className="px-6 py-4 text-sm" style={{ color: colors.neutral.textStrong }}>{sku.name}</td>
                       <td className="px-6 py-4 text-center">
-                        <Badge type={sku.type}>{sku.type}</Badge>
+                        <Badge type={sku.type}>{sku.type === 'PRODUCT' ? 'PRODUCT' : sku.type}</Badge>
+                      </td>
+                      <td className="px-6 py-4 text-right text-sm" style={{ color: colors.neutral.textStrong }}>
+                        {sku.hppPrice ? `Rp ${sku.hppPrice.toLocaleString('id-ID')}` : 'Rp 0'}
                       </td>
                       <td className="px-6 py-4 text-right text-sm" style={{ color: colors.neutral.textStrong }}>
                         {sku.type === 'PACKAGE' && sku.sellingPrice ? `Rp ${sku.sellingPrice.toLocaleString('id-ID')}` : '—'}
                       </td>
                       <td className="px-6 py-4 text-center">
-                        {(sku.type === 'WIP' || sku.type === 'PACKAGE') && (
+                        {(sku.type === 'PRODUCT' || sku.type === 'PACKAGE') && (
                           <Button
                             variant="secondary"
                             size="sm"
@@ -322,7 +327,7 @@ function BulkPasteModal({ isOpen, onClose, onSuccess }: { isOpen: boolean, onClo
       <div className="bg-white rounded-lg p-6 max-w-2xl w-full shadow-xl">
         <h3 className="text-lg font-bold mb-2">Bulk Paste SKU</h3>
         <p className="text-xs text-gray-500 mb-4">
-          Format: <code>KODE [TAB] NAMA [TAB] TIPE (RAW/WIP/PACKAGE) [TAB] HARGA</code>
+          Format: <code>KODE [TAB] NAMA [TAB] TIPE (RAW/PRODUCT/PACKAGE) [TAB] HARGA</code>
         </p>
         <textarea
           value={text}
@@ -345,28 +350,70 @@ function BOMViewModal({ isOpen, sku, onClose }: { isOpen: boolean, sku: SKU | nu
   if (!isOpen || !sku) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto py-10">
+      <div className="bg-white rounded-lg p-6 max-w-2xl w-full shadow-xl mx-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold">BOM: {sku.code}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+          <div>
+            <h3 className="text-xl font-bold text-gray-900">BOM: {sku.code}</h3>
+            <p className="text-sm text-gray-500">{sku.name}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">✕</button>
         </div>
-        <p className="text-sm text-gray-600 mb-4">{sku.name}</p>
 
-        <div className="border rounded divide-y">
+        <div className="border rounded-lg overflow-hidden divide-y divide-gray-100">
           {sku.bomComponents?.length === 0 ? (
-            <div className="p-4 text-center text-sm text-gray-400 italic">Tidak ada komponen</div>
+            <div className="p-8 text-center text-sm text-gray-400 italic">Tidak ada komponen resep</div>
           ) : (
-            sku.bomComponents?.map((comp: any) => (
-              <div key={comp.id} className="p-3 flex justify-between text-sm">
-                <span>{comp.child?.name || 'Unknown'}</span>
-                <span className="font-bold">{comp.quantity} unit</span>
-              </div>
-            ))
+            (['RAW', 'PACKING', 'STIKER', 'SAFETY', 'DUS'] as const).map(cat => {
+              const comps = sku.bomComponents?.filter((c: any) => c.category === cat);
+              if (!comps || comps.length === 0) return null;
+              
+              return (
+                <div key={cat} className="bg-white">
+                  <div className="bg-gray-50 px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] border-b">
+                    {cat}
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-[10px] text-gray-400 uppercase font-bold">
+                        <th className="px-4 py-2">Kode</th>
+                        <th className="px-4 py-2">Nama</th>
+                        <th className="px-4 py-2 text-right">Qty/Unit</th>
+                        <th className="px-4 py-2 text-center">Tipe Konsumsi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {comps.map((comp: any) => {
+                        const item = comp.childSku || comp.childKemasan;
+                        return (
+                          <tr key={comp.id} className="hover:bg-gray-50/50">
+                            <td className="px-4 py-3 font-mono text-xs font-bold text-gray-700">{item?.code}</td>
+                            <td className="px-4 py-3 text-gray-600">{item?.name}</td>
+                            <td className="px-4 py-3 text-right font-bold">
+                              {comp.quantity} <span className="text-[10px] text-gray-400 font-medium uppercase">{cat === 'RAW' ? 'ml' : 'pcs'}</span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                                comp.consumptionType === 'MANUAL' 
+                                  ? 'bg-orange-100 text-orange-600' 
+                                  : 'bg-blue-100 text-blue-600'
+                              }`}>
+                                {comp.consumptionType || 'AUTOMATIC'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })
           )}
         </div>
-        <div className="mt-6 flex justify-end">
-          <Button variant="primary" onClick={onClose}>Tutup</Button>
+        
+        <div className="mt-8 pt-6 border-t flex justify-end">
+          <Button variant="primary" onClick={onClose} style={{ minWidth: '120px' }}>Tutup</Button>
         </div>
       </div>
     </div>

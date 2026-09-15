@@ -27,12 +27,13 @@ export async function GET(req: Request) {
     const costMap = new Map(costHistories.map(ch => [ch.skuId, ch]));
 
     // 2. Aggregate movements per SKU
-    const result = skus.map(sku => {
+    const result = await Promise.all(skus.map(async (sku) => {
       let stockAwal = 0;
       let masukBeli = 0;
       let masukProduksi = 0;
       let keluarProduksi = 0;
       let keluarJual = 0;
+      let keluarBreakage = 0;
 
       sku.inventory.forEach(inv => {
         const invDate = new Date(inv.date);
@@ -46,17 +47,64 @@ export async function GET(req: Request) {
             else keluarProduksi += Math.abs(inv.movement);
           } else if (inv.type === MovementType.SALE) {
             keluarJual += Math.abs(inv.movement);
+          } else if (inv.type === MovementType.BREAKAGE) {
+            keluarBreakage += Math.abs(inv.movement);
           }
-          // Note: ADJUSTMENT, BREAKAGE, etc. are currently ignored in specific columns
-          // as per spec 6.1, but they affect real stock.
-          // However, for "Stock Akhir" as defined by spec formula:
         }
       });
 
-      const stockAkhir = stockAwal + masukBeli + masukProduksi - keluarProduksi - keluarJual;
+      const stockAkhir = stockAwal + masukBeli + masukProduksi - keluarProduksi - keluarJual - keluarBreakage;
       const costInfo = costMap.get(sku.id);
       const avgCost = costInfo?.avgCost || 0;
       const nilaiStock = stockAkhir * avgCost;
+
+      // 2a. Fetch breakdown for RAW if needed
+      let rawBreakdown = null;
+      if (sku.type === SKUType.RAW) {
+        // Find SKUs that use this RAW as a component
+        const uses = await prisma.bOMComponent.findMany({
+          where: { childSkuId: sku.id },
+          include: { 
+            parent: {
+              select: {
+                code: true,
+                name: true,
+                productSize: true
+              }
+            }
+          }
+        });
+
+        const usageList = [];
+        for (const use of uses) {
+          // Calculate total ml used for this parent SKU in current period
+          // Note: This is an approximation based on production outputs
+          const productionOutputs = await prisma.productionOutput.findMany({
+            where: { 
+              skuId: use.parentId,
+              production: {
+                date: {
+                  gte: from,
+                  lte: to
+                }
+              }
+            },
+            include: { production: true }
+          });
+
+          const totalQty = productionOutputs.reduce((sum, po) => sum + (po.production?.outputQty || 0), 0);
+          const totalUsageMl = totalQty * use.quantity; // use.quantity is ml needed per parent unit
+
+          if (totalUsageMl > 0) {
+            usageList.push({
+              parentCode: use.parent.code,
+              qtyProduced: totalQty,
+              totalUsage: totalUsageMl
+            });
+          }
+        }
+        rawBreakdown = usageList;
+      }
 
       return {
         id: sku.id,
@@ -68,17 +116,19 @@ export async function GET(req: Request) {
         masukProduksi,
         keluarProduksi,
         keluarJual,
+        keluarBreakage,
         stockAkhir,
         avgCost,
-        nilaiStock
+        nilaiStock,
+        rawBreakdown
       };
-    });
+    }));
 
     // 3. Calculate KPIs
     const kpi = {
       totalValue: 0,
       raw: { value: 0, count: 0 },
-      wip: { value: 0, count: 0 },
+      product: { value: 0, count: 0 },
       package: { value: 0, count: 0 }
     };
 
@@ -87,9 +137,9 @@ export async function GET(req: Request) {
       if (item.type === SKUType.RAW) {
         kpi.raw.value += item.nilaiStock;
         kpi.raw.count++;
-      } else if (item.type === SKUType.WIP) {
-        kpi.wip.value += item.nilaiStock;
-        kpi.wip.count++;
+      } else if (item.type === SKUType.PRODUCT) {
+        kpi.product.value += item.nilaiStock;
+        kpi.product.count++;
       } else if (item.type === SKUType.PACKAGE) {
         kpi.package.value += item.nilaiStock;
         kpi.package.count++;

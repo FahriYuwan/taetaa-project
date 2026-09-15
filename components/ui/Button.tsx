@@ -43,7 +43,7 @@ export function Button({ variant = 'primary', size = 'md', icon, children, ...pr
 }
 
 interface BadgeProps {
-  type: 'RAW' | 'WIP' | 'PACKAGE';
+  type: 'RAW' | 'PRODUCT' | 'PACKAGE';
   children: React.ReactNode;
 }
 

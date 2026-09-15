@@ -81,7 +81,7 @@ export default function ProduksiPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: colors.neutral.bg }}>
       <PageHeader
-        title="Produksi RAW → WIP"
+        title="Produksi RAW → PRODUCT"
         subtitle="Konversi bahan baku menjadi produk jadi berdasarkan BOM. HPP dihitung otomatis (Weighted Average)."
         actions={
           <div className="flex gap-3">

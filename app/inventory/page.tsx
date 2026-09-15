@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/header/PageHeader';
 import { KPICard } from '@/components/dashboard/KPICard';
-import { Badge } from '@/components/ui/Button';
+import { Button, Badge } from '@/components/ui/Button';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
 import { 
@@ -12,29 +12,36 @@ import {
   FiTrendingUp, 
   FiTrendingDown, 
   FiAlertCircle, 
-  FiDatabase 
+  FiDatabase,
+  FiInfo
 } from 'react-icons/fi';
 
 interface InventoryItem {
   id: string;
   code: string;
   name: string;
-  type: 'RAW' | 'WIP' | 'PACKAGE';
+  type: 'RAW' | 'PRODUCT' | 'PACKAGE';
   stockAwal: number;
   masukBeli: number;
   masukProduksi: number;
   keluarProduksi: number;
   keluarJual: number;
+  keluarBreakage: number;
   stockAkhir: number;
   avgCost: number;
   nilaiStock: number;
+  rawBreakdown?: Array<{
+    parentCode: string;
+    qtyProduced: number;
+    totalUsage: number;
+  }> | null;
 }
 
 interface InventoryData {
   kpi: {
     totalValue: number;
     raw: { value: number, count: number };
-    wip: { value: number, count: number };
+    product: { value: number, count: number };
     package: { value: number, count: number };
   };
   items: InventoryItem[];
@@ -46,6 +53,7 @@ export default function InventoryDashboardPage() {
   const [data, setData] = useState<InventoryData | null>(null);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [viewingBreakdown, setViewingBreakdown] = useState<InventoryItem | null>(null);
 
   // Date filters
   const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -143,7 +151,7 @@ export default function InventoryDashboardPage() {
             <KPICard
               label="Nilai Total Inventory"
               value={`Rp ${(data?.kpi.totalValue || 0).toLocaleString('id-ID')}`}
-              description="Total akumulasi nilai stock akhir dari seluruh kategori SKU (Raw, WIP, Package)."
+              description="Total akumulasi nilai stock akhir dari seluruh kategori SKU (Raw, Product, Package)."
               valueColor={colors.brand[500]}
               icon={<FiDatabase size={24} />}
             />
@@ -155,9 +163,9 @@ export default function InventoryDashboardPage() {
             icon={<FiPackage size={20} />}
           />
           <KPICard
-            label="WIP & Package Value"
-            value={`Rp ${((data?.kpi.wip.value || 0) + (data?.kpi.package.value || 0)).toLocaleString('id-ID')}`}
-            description={`${(data?.kpi.wip.count || 0) + (data?.kpi.package.count || 0)} SKU Barang Jadi/Kemas`}
+            label="Product & Package Value"
+            value={`Rp ${((data?.kpi.product.value || 0) + (data?.kpi.package.value || 0)).toLocaleString('id-ID')}`}
+            description={`${(data?.kpi.product.count || 0) + (data?.kpi.package.count || 0)} SKU Barang Jadi/Kemas`}
             icon={<FiActivity size={20} />}
           />
         </div>
@@ -242,7 +250,7 @@ export default function InventoryDashboardPage() {
         <div className="bg-white rounded-lg border shadow-sm overflow-hidden" style={{ borderColor: colors.neutral.border }}>
           {/* Tabs */}
           <div className="flex border-b bg-gray-50/50" style={{ borderColor: colors.neutral.border }}>
-            {(['all', 'RAW', 'WIP', 'PACKAGE'] as const).map((tab) => (
+            {(['all', 'RAW', 'PRODUCT', 'PACKAGE'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setTypeFilter(tab)}
@@ -252,7 +260,7 @@ export default function InventoryDashboardPage() {
                     : 'border-transparent text-gray-400 hover:text-gray-600'
                 }`}
               >
-                {tab === 'all' ? 'Semua' : tab}
+                {tab === 'all' ? 'Semua' : (tab === 'PRODUCT' ? 'Product' : tab)}
               </button>
             ))}
           </div>
@@ -270,6 +278,7 @@ export default function InventoryDashboardPage() {
                   <th className="px-4 py-3 text-right">MASUK (PROD)</th>
                   <th className="px-4 py-3 text-right">KELUAR (PROD)</th>
                   <th className="px-4 py-3 text-right">KELUAR (JUAL)</th>
+                  <th className="px-4 py-3 text-right">KELUAR (RUSAK)</th>
                   <th className="px-4 py-3 text-right font-bold text-gray-900">STOCK AKHIR</th>
                   <th className="px-4 py-3 text-right">AVG COST</th>
                   <th className="px-4 py-3 text-right">NILAI STOCK</th>
@@ -299,8 +308,20 @@ export default function InventoryDashboardPage() {
                       <td className="px-4 py-3 text-right text-green-600">+{item.masukProduksi.toLocaleString('id-ID')}</td>
                       <td className="px-4 py-3 text-right text-orange-600">-{item.keluarProduksi.toLocaleString('id-ID')}</td>
                       <td className="px-4 py-3 text-right text-red-600">-{item.keluarJual.toLocaleString('id-ID')}</td>
+                      <td className="px-4 py-3 text-right text-red-400">-{item.keluarBreakage.toLocaleString('id-ID')}</td>
                       <td className={`px-4 py-3 text-right font-bold ${item.stockAkhir <= 10 ? 'text-red-600' : 'text-gray-900'}`}>
-                        {item.stockAkhir.toLocaleString('id-ID')}
+                        <div className="flex items-center justify-end gap-1">
+                          {item.type === 'RAW' && item.rawBreakdown && item.rawBreakdown.length > 0 && (
+                            <button 
+                              onClick={() => setViewingBreakdown(item)}
+                              className="text-blue-400 hover:text-blue-600 p-1"
+                              title="Lihat Breakdown Pemakaian"
+                            >
+                              <FiInfo size={12} />
+                            </button>
+                          )}
+                          {item.stockAkhir.toLocaleString('id-ID')}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-right">Rp {item.avgCost.toLocaleString('id-ID')}</td>
                       <td className="px-4 py-3 text-right font-bold" style={{ color: colors.brand[500] }}>
@@ -312,6 +333,62 @@ export default function InventoryDashboardPage() {
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      {viewingBreakdown && (
+        <RawUsageModal 
+          item={viewingBreakdown} 
+          onClose={() => setViewingBreakdown(null)} 
+        />
+      )}
+    </div>
+  );
+}
+
+function RawUsageModal({ item, onClose }: { item: InventoryItem, onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h3 className="text-lg font-bold">Breakdown Pemakaian: {item.code}</h3>
+            <p className="text-xs text-gray-500">{item.name}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2 text-sm border-b pb-4">
+            <div className="text-gray-500">Stok Awal:</div>
+            <div className="text-right font-medium">{item.stockAwal.toLocaleString('id-ID')} ml</div>
+            <div className="text-gray-500">Masuk (Beli):</div>
+            <div className="text-right font-medium text-green-600">+{item.masukBeli.toLocaleString('id-ID')} ml</div>
+          </div>
+
+          <div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Dipakai Untuk:</div>
+            <div className="border rounded divide-y max-h-[200px] overflow-auto">
+              {item.rawBreakdown?.map((usage, idx) => (
+                <div key={idx} className="p-2 flex justify-between text-sm">
+                  <div>
+                    <div className="font-bold">{usage.parentCode}</div>
+                    <div className="text-[10px] text-gray-400">Prod: {usage.qtyProduced} unit</div>
+                  </div>
+                  <div className="text-red-500 font-medium">-{usage.totalUsage.toLocaleString('id-ID')} ml</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-sm border-t pt-4 font-bold">
+            <div>Stok Akhir:</div>
+            <div className="text-right">{item.stockAkhir.toLocaleString('id-ID')} ml</div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <Button variant="primary" onClick={onClose}>Tutup</Button>
         </div>
       </div>
     </div>

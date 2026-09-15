@@ -22,6 +22,6 @@ export const colors = {
 
 export const skuTypeColors = {
   RAW: '#4FC3F7', // brand-400
-  WIP: '#F97316', // semantic.orange
+  PRODUCT: '#F97316', // semantic.orange
   PACKAGE: '#1E88E5', // brand-500
 };

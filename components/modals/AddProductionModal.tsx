@@ -24,6 +24,7 @@ export function AddProductionModal({
     outputSkuId: '',
     outputQty: 0,
     notes: '',
+    manualConsumptions: {} as Record<string, boolean>, // childKemasanId -> isConsumed
   });
   const [error, setError] = useState('');
   const [componentStatus, setComponentStatus] = useState<any[]>([]);
@@ -36,6 +37,7 @@ export function AddProductionModal({
         outputSkuId: '',
         outputQty: 0,
         notes: '',
+        manualConsumptions: {},
       });
       setSelectedSku(null);
       setComponentStatus([]);
@@ -44,7 +46,7 @@ export function AddProductionModal({
 
   async function fetchSkus() {
     try {
-      // Fetch WIP and PACKAGE skus (which have BOM)
+      // Fetch PRODUCT and PACKAGE skus (which have BOM)
       const res = await fetch('/api/skus');
       if (res.ok) {
         const data = await res.json();
@@ -146,7 +148,7 @@ export function AddProductionModal({
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
-                Output SKU (WIP / PACKAGE)
+                Output SKU (PRODUCT / PACKAGE)
               </label>
               <select
                 value={formData.outputSkuId}
@@ -216,15 +218,43 @@ export function AddProductionModal({
               ) : (
                 selectedSku.bomComponents.map((bom: any) => {
                   const needed = bom.quantity * formData.outputQty;
+                  const item = bom.childSku || bom.childKemasan;
+                  const isManual = bom.consumptionType === 'MANUAL';
+                  
                   return (
                     <div key={bom.id} className="p-3 rounded border text-sm" style={{ borderColor: colors.neutral.border }}>
-                      <div className="font-bold mb-1 truncate">{bom.child.name}</div>
-                      <div className="flex justify-between text-[11px] text-gray-500">
-                        <span>Butuh: {needed.toLocaleString('id-ID')}</span>
-                        <span className="font-medium" style={{ color: colors.brand[500] }}>
-                          {bom.quantity} / unit
-                        </span>
+                      <div className="flex justify-between items-start mb-1">
+                        <div className="font-bold truncate pr-2">{item?.name}</div>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-bold uppercase">{bom.category}</span>
                       </div>
+                      
+                      {isManual ? (
+                        <div className="mt-2 flex items-center gap-2 bg-orange-50 p-2 rounded border border-orange-100">
+                          <input 
+                            type="checkbox" 
+                            id={`manual-${bom.id}`}
+                            checked={!!formData.manualConsumptions[bom.childKemasanId]}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              manualConsumptions: {
+                                ...formData.manualConsumptions,
+                                [bom.childKemasanId]: e.target.checked
+                              }
+                            })}
+                            className="w-4 h-4 accent-orange-600"
+                          />
+                          <label htmlFor={`manual-${bom.id}`} className="text-[11px] font-bold text-orange-700 cursor-pointer">
+                            {item?.code} habis, kurangi stok?
+                          </label>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between text-[11px] text-gray-500 mt-1">
+                          <span>Butuh: {needed.toLocaleString('id-ID')} {bom.category === 'RAW' ? 'ml' : 'pcs'}</span>
+                          <span className="font-medium" style={{ color: colors.brand[500] }}>
+                            {bom.quantity} / unit
+                          </span>
+                        </div>
+                      )}
                     </div>
                   );
                 })

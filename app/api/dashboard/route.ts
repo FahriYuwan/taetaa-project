@@ -166,8 +166,8 @@ export async function GET(request: Request) {
         color: '#4FC3F7', // brand-400
       },
       {
-        name: 'WIP',
-        value: inventoryByType['WIP'] || 0,
+        name: 'PRODUCT',
+        value: inventoryByType['PRODUCT'] || 0,
         color: '#F97316', // semantic.orange
       },
     ];
@@ -181,7 +181,7 @@ export async function GET(request: Request) {
         totalOrders,
         avgOrderValue,
         inventoryRaw: inventoryByType['RAW'] || 0,
-        inventoryWip: inventoryByType['WIP'] || 0,
+        inventoryProduct: inventoryByType['PRODUCT'] || 0,
         inventoryPackage: inventoryByType['PACKAGE'] || 0,
         totalPurchaseAmount,
       },

@@ -34,7 +34,7 @@ export async function POST(req: Request) {
                 if (costHistory) {
                     await tx.sKUCostHistory.update({
                         where: { skuId: sku.id },
-                        data: { stock: costHistory.stock - qty },
+                        data: { stock: { decrement: qty } },
                     });
                 }
                 count++;

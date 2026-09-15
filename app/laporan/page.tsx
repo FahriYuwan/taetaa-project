@@ -33,7 +33,7 @@ export default function LaporanExportPage() {
     },
     {
       id: 'productions',
-      title: 'Produksi (RAW→WIP)',
+      title: 'Produksi (RAW→PRODUCT)',
       category: 'BERDASARKAN PERIODE' as const,
       description: 'Riwayat konversi produksi & konsumsi BOM',
     },

@@ -11,7 +11,10 @@ export async function GET(
       where: { id },
       include: {
         bomComponents: {
-          include: { child: true },
+          include: { 
+            childSku: true,
+            childKemasan: true
+          },
         },
       },
     });
@@ -57,6 +60,8 @@ export async function PUT(
           code,
           name,
           type,
+          productSize: body.productSize || 0,
+          hppPrice: body.hppPrice || 0,
           sellingPrice: type === 'PACKAGE' ? sellingPrice : null,
         },
       });

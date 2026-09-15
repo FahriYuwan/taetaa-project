@@ -6,14 +6,18 @@ import { Button } from '@/components/ui/Button';
 
 interface BOMComponentInput {
   childId: string;
+  category: 'RAW' | 'PACKING' | 'STIKER' | 'SAFETY' | 'DUS';
   quantity: number;
+  consumptionType: 'AUTOMATIC' | 'MANUAL';
   childName?: string; // for display
 }
 
 interface SKUFormData {
   code: string;
   name: string;
-  type: 'RAW' | 'WIP' | 'PACKAGE';
+  type: 'RAW' | 'PRODUCT' | 'PACKAGE';
+  productSize: number;
+  hppPrice: number;
   sellingPrice?: number;
   bomComponents: BOMComponentInput[];
 }
@@ -37,10 +41,12 @@ export function AddEditSKUModal({
     code: '',
     name: '',
     type: 'RAW',
+    productSize: 0,
+    hppPrice: 0,
     sellingPrice: undefined,
     bomComponents: [],
   });
-  const [availableComponents, setAvailableComponents] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<'RAW' | 'PACKING' | 'STIKER' | 'SAFETY' | 'DUS'>('RAW');
   const [selectedChildId, setSelectedChildId] = useState('');
   const [selectedQty, setSelectedQty] = useState(0);
   const [error, setError] = useState('');
@@ -52,11 +58,15 @@ export function AddEditSKUModal({
           code: initialData.code || '',
           name: initialData.name || '',
           type: initialData.type || 'RAW',
+          productSize: initialData.productSize || 0,
+          hppPrice: initialData.hppPrice || 0,
           sellingPrice: initialData.sellingPrice,
           bomComponents: initialData.bomComponents ? initialData.bomComponents.map((b: any) => ({
-            childId: b.childId,
+            childId: b.childSkuId || b.childKemasanId,
+            category: b.category,
             quantity: b.quantity,
-            childName: b.child?.name || b.childName
+            consumptionType: b.consumptionType,
+            childName: b.childSku?.name || b.childKemasan?.name || b.childName
           })) : [],
         });
       } else {
@@ -64,26 +74,37 @@ export function AddEditSKUModal({
           code: '',
           name: '',
           type: 'RAW',
+          productSize: 0,
+          hppPrice: 0,
           sellingPrice: undefined,
           bomComponents: [],
         });
       }
-      fetchAvailableComponents();
+      fetchAvailableItems();
     }
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, selectedCategory]);
 
-  async function fetchAvailableComponents() {
+  async function fetchAvailableItems() {
     try {
-      // Fetch RAW and WIP skus as possible components
-      const res = await fetch('/api/skus');
+      let url = '';
+      if (selectedCategory === 'RAW') {
+        url = '/api/skus';
+      } else {
+        url = `/api/kemasan?category=${selectedCategory}`;
+      }
+      
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        // Filter out self if editing
-        const filtered = data.filter((s: any) => s.id !== initialData?.id && (s.type === 'RAW' || s.type === 'WIP'));
+        let filtered = data;
+        if (selectedCategory === 'RAW') {
+          // Only show RAW skus or PRODUCT skus as components
+          filtered = data.filter((s: any) => s.id !== initialData?.id && (s.type === 'RAW' || s.type === 'PRODUCT'));
+        }
         setAvailableComponents(filtered);
       }
     } catch (err) {
-      console.error('Failed to fetch components:', err);
+      console.error('Failed to fetch items:', err);
     }
   }
 
@@ -101,7 +122,7 @@ export function AddEditSKUModal({
       return;
     }
 
-    if ((formData.type === 'WIP' || formData.type === 'PACKAGE') && formData.bomComponents.length === 0) {
+    if ((formData.type === 'PRODUCT' || formData.type === 'PACKAGE') && formData.bomComponents.length === 0) {
       setError('Harap tambahkan minimal 1 komponen BOM');
       return;
     }
@@ -119,16 +140,26 @@ export function AddEditSKUModal({
     const component = availableComponents.find(c => c.id === selectedChildId);
     if (!component) return;
 
-    if (formData.bomComponents.some(c => c.childId === selectedChildId)) {
+    if (formData.bomComponents.some(c => c.childId === selectedChildId && c.category === selectedCategory)) {
       setError('Komponen sudah ada di daftar');
       return;
     }
+
+    const consumptionType = (selectedCategory === 'SAFETY' && (component.code === 'SLTP' || component.code === 'PLWR'))
+      ? 'MANUAL'
+      : 'AUTOMATIC';
 
     setFormData({
       ...formData,
       bomComponents: [
         ...formData.bomComponents,
-        { childId: selectedChildId, quantity: selectedQty, childName: component.name }
+        { 
+          childId: selectedChildId, 
+          category: selectedCategory,
+          quantity: selectedQty, 
+          consumptionType,
+          childName: component.name 
+        }
       ]
     });
     setSelectedChildId('');
@@ -207,9 +238,60 @@ export function AddEditSKUModal({
                   disabled={isLoading}
                 >
                   <option value="RAW">RAW (Bahan Baku)</option>
-                  <option value="WIP">WIP (Setengah Jadi)</option>
+                  <option value="PRODUCT">PRODUCT (Setengah Jadi)</option>
                   <option value="PACKAGE">PACKAGE (Produk Jadi)</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
+                  Product Size (ml)
+                </label>
+                <input
+                  type="number"
+                  value={formData.productSize}
+                  onChange={(e) => setFormData({ ...formData, productSize: parseFloat(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 rounded border text-sm focus:outline-none focus:ring-2"
+                  style={{ borderColor: colors.neutral.border, '--tw-ring-color': colors.brand[500] } as any}
+                  disabled={isLoading}
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
+                  Harga HPP (Biaya Modal)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={formData.hppPrice}
+                    onChange={(e) => setFormData({ ...formData, hppPrice: parseFloat(e.target.value) || 0 })}
+                    className="flex-1 px-3 py-2 rounded border text-sm focus:outline-none focus:ring-2"
+                    style={{ borderColor: colors.neutral.border, '--tw-ring-color': colors.brand[500] } as any}
+                    disabled={isLoading}
+                    placeholder="0"
+                  />
+                  {formData.bomComponents.length > 0 && (
+                    <Button 
+                      type="button" 
+                      variant="secondary" 
+                      size="sm"
+                      onClick={() => {
+                        const calculatedHPP = formData.bomComponents.reduce((sum, comp) => {
+                          // This is a simplified calculation in UI
+                          // Real calculation should involve child's latest avgCost
+                          // For now, we use a placeholder or assume the user will adjust
+                          return sum;
+                        }, 0);
+                        // showToast({ message: 'Fitur kalkulasi HPP otomatis sedang disiapkan', type: 'info' });
+                      }}
+                      title="Hitung dari BOM"
+                    >
+                      🧮
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {formData.type === 'PACKAGE' && (
@@ -243,56 +325,98 @@ export function AddEditSKUModal({
                 </h3>
 
                 {/* Add Component Form */}
-                <div className="flex gap-2">
-                  <select
-                    value={selectedChildId}
-                    onChange={(e) => setSelectedChildId(e.target.value)}
-                    className="flex-1 px-3 py-2 rounded border text-sm bg-white"
-                    style={{ borderColor: colors.neutral.border }}
-                  >
-                    <option value="">Pilih Komponen...</option>
-                    {availableComponents.map(s => (
-                      <option key={s.id} value={s.id}>{s.code} - {s.name}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={selectedQty || ''}
-                    onChange={(e) => setSelectedQty(parseFloat(e.target.value))}
-                    className="w-20 px-3 py-2 rounded border text-sm"
-                    style={{ borderColor: colors.neutral.border }}
-                    placeholder="Qty"
-                  />
-                  <Button type="button" variant="secondary" onClick={addComponent}>
-                    Add
-                  </Button>
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <select
+                      value={selectedCategory}
+                      onChange={(e) => {
+                        setSelectedCategory(e.target.value as any);
+                        setSelectedChildId('');
+                      }}
+                      className="w-32 px-3 py-2 rounded border text-sm bg-white font-bold"
+                      style={{ borderColor: colors.neutral.border }}
+                    >
+                      <option value="RAW">RAW</option>
+                      <option value="PACKING">PACKING</option>
+                      <option value="STIKER">STIKER</option>
+                      <option value="SAFETY">SAFETY</option>
+                      <option value="DUS">DUS</option>
+                    </select>
+                    <select
+                      value={selectedChildId}
+                      onChange={(e) => setSelectedChildId(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded border text-sm bg-white"
+                      style={{ borderColor: colors.neutral.border }}
+                    >
+                      <option value="">Pilih {selectedCategory}...</option>
+                      {availableComponents.map(s => (
+                        <option key={s.id} value={s.id}>{s.code} - {s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={selectedQty || ''}
+                        onChange={(e) => setSelectedQty(parseFloat(e.target.value))}
+                        className="w-full px-3 py-2 rounded border text-sm"
+                        style={{ borderColor: colors.neutral.border }}
+                        placeholder="Qty per Unit"
+                      />
+                      <span className="absolute right-3 top-2 text-[10px] text-gray-400 font-bold">
+                        {selectedCategory === 'RAW' ? 'ML' : 'PCS'}
+                      </span>
+                    </div>
+                    <Button type="button" variant="secondary" onClick={addComponent} style={{ width: '100px' }}>
+                      Add
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Component List */}
-                <div className="border rounded divide-y max-h-[300px] overflow-auto" style={{ borderColor: colors.neutral.border }}>
+                <div className="border rounded divide-y max-h-[400px] overflow-auto" style={{ borderColor: colors.neutral.border }}>
                   {formData.bomComponents.length === 0 ? (
                     <div className="p-4 text-center text-xs italic text-gray-400">
                       Belum ada komponen ditambahkan
                     </div>
                   ) : (
-                    formData.bomComponents.map((comp) => (
-                      <div key={comp.childId} className="p-3 flex justify-between items-center text-sm">
-                        <div>
-                          <span className="font-medium">{comp.childName || availableComponents.find(s => s.id === comp.childId)?.name}</span>
-                          <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                            {comp.quantity} unit
-                          </span>
+                    (['RAW', 'PACKING', 'STIKER', 'SAFETY', 'DUS'] as const).map(cat => {
+                      const comps = formData.bomComponents.filter(c => c.category === cat);
+                      if (comps.length === 0) return null;
+                      return (
+                        <div key={cat} className="bg-white">
+                          <div className="bg-gray-50 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-y">
+                            {cat}
+                          </div>
+                          {comps.map((comp) => (
+                            <div key={comp.childId} className="p-3 flex justify-between items-center text-sm">
+                              <div>
+                                <span className="font-medium text-gray-700">{comp.childName}</span>
+                                <div className="flex gap-2 mt-0.5">
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-bold">
+                                    {comp.quantity} {cat === 'RAW' ? 'ml' : 'pcs'}
+                                  </span>
+                                  {comp.consumptionType === 'MANUAL' && (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 font-bold">
+                                      MANUAL
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeComponent(comp.childId)}
+                                className="text-red-400 hover:text-red-600 p-1"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeComponent(comp.childId)}
-                          className="text-red-500 hover:text-red-700 font-bold"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>

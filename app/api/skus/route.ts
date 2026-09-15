@@ -13,7 +13,10 @@ export async function GET(req: Request) {
       orderBy: { code: 'asc' },
       include: {
         bomComponents: {
-          include: { child: true },
+          include: { 
+            childSku: true,
+            childKemasan: true
+          },
         },
       },
     });
@@ -45,6 +48,8 @@ export async function POST(req: Request) {
           code,
           name,
           type: type as SKUType,
+          productSize: body.productSize || 0,
+          hppPrice: body.hppPrice || 0,
           sellingPrice: type === 'PACKAGE' ? sellingPrice : null,
         },
       });
@@ -53,8 +58,11 @@ export async function POST(req: Request) {
         await tx.bOMComponent.createMany({
           data: bomComponents.map((comp: any) => ({
             parentId: newSku.id,
-            childId: comp.childId,
+            childSkuId: comp.category === 'RAW' ? comp.childId : null,
+            childKemasanId: comp.category !== 'RAW' ? comp.childId : null,
+            category: comp.category,
             quantity: comp.quantity,
+            consumptionType: comp.consumptionType || 'AUTOMATIC',
           })),
         });
       }

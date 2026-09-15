@@ -25,7 +25,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { date, outputSkuId, outputQty, notes } = body;
+    const { date, outputSkuId, outputQty, notes, manualConsumptions } = body;
 
     if (!date || !outputSkuId || !outputQty) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -36,7 +36,10 @@ export async function POST(req: Request) {
       where: { id: outputSkuId },
       include: {
         bomComponents: {
-          include: { child: true }
+          include: { 
+            childSku: true,
+            childKemasan: true
+          }
         }
       }
     });
@@ -56,47 +59,75 @@ export async function POST(req: Request) {
 
       // A. Verify and consume components
       for (const bom of skuWithBom.bomComponents) {
-        const qtyNeeded = bom.quantity * outputQty;
+        let qtyNeeded = 0;
+        let currentStock = 0;
+        let currentAvgCost = 0;
+        let itemName = '';
 
-        // Get current cost history for the component
-        const componentCost = await tx.sKUCostHistory.findUnique({
-          where: { skuId: bom.childId }
-        });
+        const isManual = bom.consumptionType === 'MANUAL';
+        
+        if (isManual) {
+          const isConsumed = manualConsumptions?.[bom.childKemasanId!];
+          if (!isConsumed) continue; // Skip if not checked
+          qtyNeeded = 1; // Manual consumption is always 1 pcs
+        } else {
+          qtyNeeded = bom.quantity * outputQty;
+        }
 
-        const currentStock = componentCost?.stock || 0;
-        const currentAvgCost = componentCost?.avgCost || 0;
+        if (bom.category === 'RAW') {
+          const componentCost = await tx.sKUCostHistory.findUnique({
+            where: { skuId: bom.childSkuId! }
+          });
+          currentStock = componentCost?.stock || 0;
+          currentAvgCost = componentCost?.avgCost || 0;
+          itemName = bom.childSku?.name || 'RAW';
+        } else {
+          const kemasan = await tx.masterItemKemasan.findUnique({
+            where: { id: bom.childKemasanId! }
+          });
+          currentStock = kemasan?.stock || 0;
+          currentAvgCost = kemasan?.avgCost || 0;
+          itemName = kemasan?.name || 'Kemasan';
+        }
 
         if (currentStock < qtyNeeded) {
-          throw new Error(`Stok tidak cukup untuk komponen: ${bom.child.name} (Tersedia: ${currentStock}, Dibutuhkan: ${qtyNeeded})`);
+          throw new Error(`Stok tidak cukup untuk komponen: ${itemName} (Tersedia: ${currentStock}, Dibutuhkan: ${qtyNeeded})`);
         }
 
         // Calculate cost contribution
         totalProductionCost += qtyNeeded * currentAvgCost;
 
-        // B. Record component consumption (Inventory Movement)
-        await tx.inventory.create({
-          data: {
-            date: new Date(date),
-            skuId: bom.childId,
-            movement: -qtyNeeded,
-            type: MovementType.PRODUCTION,
-            reference: 'TEMP_PROD', // Will update later if needed or use a placeholder
-          }
-        });
-
-        // C. Update component stock
-        await tx.sKUCostHistory.update({
-          where: { skuId: bom.childId },
-          data: { stock: { decrement: qtyNeeded } }
-        });
-
-        productionInputsData.push({
-          inputSkuId: bom.childId,
-          qtyUsed: qtyNeeded
-        });
+        // B. Record component consumption
+        if (bom.category === 'RAW') {
+          await tx.inventory.create({
+            data: {
+              date: new Date(date),
+              skuId: bom.childSkuId!,
+              movement: -qtyNeeded,
+              type: MovementType.PRODUCTION,
+              reference: 'TEMP_PROD',
+            }
+          });
+          await tx.sKUCostHistory.update({
+            where: { skuId: bom.childSkuId! },
+            data: { stock: { decrement: qtyNeeded } }
+          });
+          productionInputsData.push({
+            inputSkuId: bom.childSkuId!,
+            qtyUsed: qtyNeeded
+          });
+        } else {
+          // Kemasan items just get stock reduction for now
+          await tx.masterItemKemasan.update({
+            where: { id: bom.childKemasanId! },
+            data: { stock: { decrement: qtyNeeded } }
+          });
+          // We don't have a movement table for Kemasan yet (per doc 08), 
+          // but the HPP calculation is updated above.
+        }
       }
 
-      // D. Create Production Output and Production records
+      // D. Create Production records
       const productionOutput = await tx.productionOutput.create({
         data: { skuId: outputSkuId }
       });

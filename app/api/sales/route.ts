@@ -6,15 +6,34 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const channel = searchParams.get('channel');
+    const from = searchParams.get('from');
+    const to = searchParams.get('to');
 
     const where: any = {};
     if (channel && channel !== 'all') {
       where.channel = channel as Channel;
     }
+    if (from || to) {
+      where.date = {};
+      if (from) where.date.gte = new Date(from);
+      if (to) {
+        const toDate = new Date(to);
+        toDate.setHours(23, 59, 59, 999);
+        where.date.lte = toDate;
+      }
+    }
 
     const sales = await prisma.sale.findMany({
       where,
-      include: { sku: true },
+      include: { 
+        sku: {
+          select: {
+            code: true,
+            name: true,
+            hppPrice: true,
+          }
+        } 
+      },
       orderBy: { date: 'desc' },
     });
     return NextResponse.json(sales);
