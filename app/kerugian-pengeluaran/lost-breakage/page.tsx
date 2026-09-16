@@ -158,13 +158,13 @@ export default function LostBreakagePage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b" style={{ borderColor: colors.neutral.border }}>
               <tr className="text-left text-[11px] font-bold uppercase tracking-widest text-gray-500">
-                <th className="px-6 py-4 whitespace-nowrap">TANGGAL</th>
+                <th className="px-6 py-4 text-center whitespace-nowrap">TANGGAL</th>
                 <th className="px-6 py-4">SKU</th>
                 <th className="px-6 py-4 text-right">QTY</th>
-                <th className="px-6 py-4">KATEGORI / ALASAN</th>
+                <th className="px-6 py-4 text-center">KATEGORI / ALASAN</th>
                 <th className="px-6 py-4 text-right">EST. KERUGIAN (RP)</th>
                 <th className="px-6 py-4">CATATAN</th>
-                <th className="px-6 py-4 text-right">AKSI</th>
+                <th className="px-6 py-4 text-center">AKSI</th>
               </tr>
             </thead>
             <tbody className="divide-y" style={{ borderColor: colors.neutral.border }}>
@@ -175,14 +175,14 @@ export default function LostBreakagePage() {
               ) : (
                 items.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">{new Date(item.date).toLocaleDateString('id-ID')}</td>
+                    <td className="px-6 py-4 text-center whitespace-nowrap">{new Date(item.date).toLocaleDateString('id-ID')}</td>
                     <td className="px-6 py-4">
                       <div className="font-bold text-gray-900">{item.sku.code}</div>
                       <div className="text-[10px] text-gray-400">{item.sku.name}</div>
                     </td>
                     <td className="px-6 py-4 text-right font-medium text-red-600">-{item.qty.toLocaleString('id-ID')}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                         item.category === 'GAGAL_QC' ? 'bg-orange-100 text-orange-600' :
                         item.category === 'RUSAK' ? 'bg-red-100 text-red-600' :
                         item.category === 'HILANG' ? 'bg-gray-100 text-gray-800' :
@@ -195,8 +195,8 @@ export default function LostBreakagePage() {
                       Rp {item.total.toLocaleString('id-ID')}
                     </td>
                     <td className="px-6 py-4 text-gray-500 italic text-xs">{item.notes || '—'}</td>
-                    <td className="px-6 py-4 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-6 py-4 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-2">
                         <Button
                           variant="secondary"
                           size="sm"

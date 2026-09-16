@@ -204,7 +204,7 @@ export default function MasterSKUPage() {
                     <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>HARGA HPP</th>
                     <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>HARGA JUAL</th>
                     <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>BOM</th>
-                    <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>AKSI</th>
+                    <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>AKSI</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -228,31 +228,37 @@ export default function MasterSKUPage() {
                           {sku.type === 'PACKAGE' && sku.sellingPrice ? `Rp ${sku.sellingPrice.toLocaleString('id-ID')}` : '—'}
                         </td>
                         <td className="px-6 py-4 text-center">
-                          {(sku.type === 'PRODUCT' || sku.type === 'PACKAGE') && (
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => setViewingSku(sku)}
-                            >
-                              Lihat BOM
-                            </Button>
+                          {(sku.type === 'PRODUCT' || sku.type === 'PACKAGE') ? (
+                            <div className="flex items-center justify-center">
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setViewingSku(sku)}
+                              >
+                                Lihat BOM
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-gray-300">—</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-right flex gap-2 justify-end">
-                          <button 
-                            className="text-lg hover:opacity-70"
-                            onClick={() => setEditingSku(sku)}
-                            title="Edit SKU"
-                          >
-                            ✏️
-                          </button>
-                          <button 
-                            className="text-lg hover:opacity-70"
-                            onClick={() => setDeletingSkuId(sku.id)}
-                            title="Hapus SKU"
-                          >
-                            🗑️
-                          </button>
+                        <td className="px-6 py-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button 
+                              className="text-lg hover:opacity-70"
+                              onClick={() => setEditingSku(sku)}
+                              title="Edit SKU"
+                            >
+                              ✏️
+                            </button>
+                            <button 
+                              className="text-lg hover:opacity-70"
+                              onClick={() => setDeletingSkuId(sku.id)}
+                              title="Hapus SKU"
+                            >
+                              🗑️
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

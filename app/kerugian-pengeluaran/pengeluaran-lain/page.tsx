@@ -153,12 +153,12 @@ export default function PengeluaranLainPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b" style={{ borderColor: colors.neutral.border }}>
               <tr className="text-left text-[11px] font-bold uppercase tracking-widest text-gray-500">
-                <th className="px-6 py-4">TANGGAL</th>
-                <th className="px-6 py-4">KATEGORI</th>
+                <th className="px-6 py-4 text-center whitespace-nowrap">TANGGAL</th>
+                <th className="px-6 py-4 text-center">KATEGORI</th>
                 <th className="px-6 py-4">PENERIMA</th>
                 <th className="px-6 py-4 text-right">JUMLAH (RP)</th>
                 <th className="px-6 py-4">KETERANGAN</th>
-                <th className="px-6 py-4 text-right">AKSI</th>
+                <th className="px-6 py-4 text-center">AKSI</th>
               </tr>
             </thead>
             <tbody className="divide-y" style={{ borderColor: colors.neutral.border }}>
@@ -169,9 +169,9 @@ export default function PengeluaranLainPage() {
               ) : (
                 expenses.map((e) => (
                   <tr key={e.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">{new Date(e.date).toLocaleDateString('id-ID')}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                    <td className="px-6 py-4 text-center whitespace-nowrap">{new Date(e.date).toLocaleDateString('id-ID')}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                         e.category === 'BONUS' ? 'bg-green-100 text-green-600' :
                         e.category === 'COMPLIMENT' ? 'bg-blue-100 text-blue-600' :
                         'bg-gray-100 text-gray-600'
@@ -184,8 +184,8 @@ export default function PengeluaranLainPage() {
                       Rp {e.amount.toLocaleString('id-ID')}
                     </td>
                     <td className="px-6 py-4 text-gray-500 italic">{e.notes || '—'}</td>
-                    <td className="px-6 py-4 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-6 py-4 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-2">
                         <Button
                           variant="secondary"
                           size="sm"

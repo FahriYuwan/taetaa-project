@@ -146,7 +146,7 @@ export default function MasterKemasanPage() {
                 <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wide text-gray-500">KATEGORI</th>
                 <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide text-gray-500">STOK</th>
                 <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide text-gray-500">AVG COST</th>
-                <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide text-gray-500">AKSI</th>
+                <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wide text-gray-500">AKSI</th>
               </tr>
             </thead>
             <tbody>
@@ -161,9 +161,11 @@ export default function MasterKemasanPage() {
                   <td className="px-6 py-4 text-right text-sm font-medium" style={{ color: colors.brand[500] }}>
                     Rp {item.avgCost.toLocaleString('id-ID')}
                   </td>
-                  <td className="px-6 py-4 text-right flex gap-2 justify-end">
-                    <button className="text-lg hover:opacity-70" onClick={() => { setEditingItem(item); setShowAddModal(true); }}>✏️</button>
-                    <button className="text-lg hover:opacity-70" onClick={() => setDeletingItemId(item.id)}>🗑️</button>
+                  <td className="px-6 py-4 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <button className="text-lg hover:opacity-70" onClick={() => { setEditingItem(item); setShowAddModal(true); }} title="Edit Item">✏️</button>
+                      <button className="text-lg hover:opacity-70" onClick={() => setDeletingItemId(item.id)} title="Hapus Item">🗑️</button>
+                    </div>
                   </td>
                 </tr>
               ))}

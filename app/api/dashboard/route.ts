@@ -53,11 +53,14 @@ export async function GET(request: Request) {
     const totalFee = sales.reduce((sum: number, sale) => sum + (sale.fee || 0), 0);
     const netRevenue = totalGross - totalFee;
 
-    // Simple HPP calculation (qty * estimated unit cost)
-    // In a real system, this would use weighted average from purchase history
+    // Fetch cost history for all SKUs
+    const costHistories = await prisma.sKUCostHistory.findMany();
+    const costMap = new Map(costHistories.map(ch => [ch.skuId, ch.avgCost]));
+
+    // Accurate HPP calculation using weighted average from SKUCostHistory
     const totalHPP = sales.reduce((sum: number, sale) => {
-      const estimatedUnitCost = 12000; // placeholder
-      const hpp = sale.qty * estimatedUnitCost;
+      const avgCost = costMap.get(sale.skuId) || 0;
+      const hpp = sale.qty * avgCost;
       return sum + hpp;
     }, 0);
 
@@ -80,8 +83,8 @@ export async function GET(request: Request) {
     const inventoryByType: Record<string, number> = {};
     skuInventories.forEach(({ quantity, sku }) => {
       const type = sku.type;
-      const estimatedUnitCost = 15000; // placeholder
-      const value = Math.max(0, quantity) * estimatedUnitCost;
+      const avgCost = costMap.get(sku.id) || 0;
+      const value = Math.max(0, quantity) * avgCost;
       if (!inventoryByType[type]) inventoryByType[type] = 0;
       inventoryByType[type] += value;
     });
@@ -105,7 +108,8 @@ export async function GET(request: Request) {
       }
       const entry = dateMap.get(dateStr)!;
       const saleRevenue = sale.total - (sale.fee || 0);
-      const estimatedHPP = sale.qty * 12000;
+      const avgCost = costMap.get(sale.skuId) || 0;
+      const estimatedHPP = sale.qty * avgCost;
       entry.revenue += saleRevenue;
       entry.hpp += estimatedHPP;
       entry.profit = entry.revenue - entry.hpp;
@@ -132,7 +136,8 @@ export async function GET(request: Request) {
     sales.forEach((sale) => {
       const skuCode = sale.sku?.code || 'Unknown';
       const saleRevenue = sale.total - (sale.fee || 0);
-      const estimatedHPP = sale.qty * 12000;
+      const avgCost = costMap.get(sale.skuId) || 0;
+      const estimatedHPP = sale.qty * avgCost;
       const saleProfit = saleRevenue - estimatedHPP;
 
       if (!skuProfitMap.has(skuCode)) {

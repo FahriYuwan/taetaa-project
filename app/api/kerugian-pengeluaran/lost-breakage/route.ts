@@ -52,12 +52,12 @@ export async function POST(req: Request) {
         }
 
         const result = await prisma.$transaction(async (tx) => {
-            const sku = await tx.sKU.findUnique({
-                where: { id: skuId },
-                select: { hppPrice: true }
+            const costHistory = await tx.sKUCostHistory.findUnique({
+                where: { skuId },
+                select: { avgCost: true }
             });
 
-            const finalUnitPrice = sku?.hppPrice || 0;
+            const finalUnitPrice = costHistory?.avgCost || 0;
             const total = qty * finalUnitPrice;
 
             const breakage = await tx.breakage.create({

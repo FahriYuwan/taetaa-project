@@ -30,12 +30,15 @@ export async function GET(req: Request) {
             code: true,
             name: true,
             type: true,
-            hppPrice: true,
           },
         },
       },
       orderBy: { date: 'desc' },
     });
+
+    // Fetch cost history for all SKUs
+    const costHistories = await prisma.sKUCostHistory.findMany();
+    const costMap = new Map(costHistories.map(ch => [ch.skuId, ch.avgCost]));
 
     let totalAffiliateHPP = 0;
     let totalAffiliateShipping = 0;
@@ -50,7 +53,7 @@ export async function GET(req: Request) {
     let countNonAffiliate = 0;
 
     const formatted = activities.map((item) => {
-      const hppUnit = item.sku?.hppPrice || 0;
+      const hppUnit = costMap.get(item.skuId) || 0;
       const hppTerpakai = hppUnit * item.qty;
       const shippingCost = item.shippingCost || 0;
       const totalBiaya = hppTerpakai + shippingCost;

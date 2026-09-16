@@ -52,12 +52,12 @@ export async function PUT(
       });
 
       // 3. TERAPKAN EFEK STOK BARU:
-      // Ambil HPP SKU (jika ganti SKU atau pakai harga baru)
-      const targetSku = await tx.sKU.findUnique({
-        where: { id: skuId },
-        select: { hppPrice: true },
+      // Ambil HPP SKU dari Cost History
+      const costHistory = await tx.sKUCostHistory.findUnique({
+        where: { skuId },
+        select: { avgCost: true },
       });
-      const finalUnitPrice = targetSku?.hppPrice || 0;
+      const finalUnitPrice = costHistory?.avgCost || 0;
       const total = parsedQty * finalUnitPrice;
 
       // Kurangi stok SKU baru di SKUCostHistory (-parsedQty)

@@ -162,7 +162,7 @@ export default function ProduksiPage() {
                 <th className="px-6 py-4">NAMA</th>
                 <th className="px-6 py-4 text-center">QTY OUTPUT</th>
                 <th className="px-6 py-4">CATATAN</th>
-                <th className="px-6 py-4 text-right">AKSI</th>
+                <th className="px-6 py-4 text-center">AKSI</th>
               </tr>
             </thead>
             <tbody className="divide-y" style={{ borderColor: colors.neutral.border }}>
@@ -186,8 +186,8 @@ export default function ProduksiPage() {
                     <td className="px-6 py-4">{p.output.sku.name}</td>
                     <td className="px-6 py-4 text-center font-medium">{p.outputQty.toLocaleString('id-ID')}</td>
                     <td className="px-6 py-4 text-gray-400 text-xs italic">{p.notes || '—'}</td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
                         <Button
                           variant="secondary"
                           size="sm"
