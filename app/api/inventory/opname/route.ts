@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { MovementType } from '@prisma/client';
 
+// GET: list all SKUs with current system stock (for building a new opname form)
 export async function GET() {
   try {
     const skus = await prisma.sKU.findMany({
-      include: {
-        inventory: true,
-      },
+      include: { inventory: true },
       orderBy: { code: 'asc' },
     });
 
@@ -29,20 +27,35 @@ export async function GET() {
   }
 }
 
+// POST: save opname as DRAFT — does NOT touch inventory/stock
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { notes, items } = body;
 
-    if (!items || !Array.isArray(items)) {
+    if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'Invalid items data' }, { status: 400 });
     }
+
+    // Generate opname number: OPN-YYYYMMDD-NNN
+    const today = new Date();
+    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+    const countToday = await prisma.stockOpname.count({
+      where: {
+        createdAt: {
+          gte: new Date(today.toISOString().slice(0, 10)),
+        },
+      },
+    });
+    const opnameNumber = `OPN-${dateStr}-${String(countToday + 1).padStart(3, '0')}`;
 
     const result = await prisma.$transaction(async (tx) => {
       const opname = await tx.stockOpname.create({
         data: {
-          date: new Date(),
-          notes: notes || 'Sesi Stock Opname',
+          opnameNumber,
+          date: today,
+          notes: notes || '',
+          status: 'DRAFT',
         },
       });
 
@@ -54,40 +67,10 @@ export async function POST(req: Request) {
             systemStock: item.systemStock,
             physicalStock: item.physicalStock,
             diff: item.diff,
-            checked: item.checked || false,
+            checked: item.checked ?? false,
             notes: item.notes || '',
           },
         });
-
-        if (item.checked && item.adjustStock && item.diff !== 0) {
-          await tx.inventory.create({
-            data: {
-              date: new Date(),
-              skuId: item.skuId,
-              movement: item.diff,
-              type: MovementType.ADJUSTMENT,
-              reference: opname.id,
-            },
-          });
-
-          const ch = await tx.sKUCostHistory.findUnique({
-            where: { skuId: item.skuId },
-          });
-          if (ch) {
-            await tx.sKUCostHistory.update({
-              where: { skuId: item.skuId },
-              data: { stock: { increment: item.diff } },
-            });
-          } else {
-            await tx.sKUCostHistory.create({
-              data: {
-                skuId: item.skuId,
-                stock: item.diff,
-                avgCost: 0,
-              },
-            });
-          }
-        }
       }
 
       return opname;
@@ -95,7 +78,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (error: any) {
-    console.error('Failed to save stock opname:', error);
-    return NextResponse.json({ error: error.message || 'Failed to save stock opname' }, { status: 500 });
+    console.error('Failed to save stock opname draft:', error);
+    return NextResponse.json({ error: error.message || 'Failed to save stock opname draft' }, { status: 500 });
   }
 }
+

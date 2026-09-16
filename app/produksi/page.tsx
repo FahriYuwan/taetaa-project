@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { AddProductionModal } from '@/components/modals/AddProductionModal';
 import { BulkProductionModal } from '@/components/modals/BulkProductionModal';
 import { ProductionDetailModal } from '@/components/modals/ProductionDetailModal';
+import { EditProductionModal } from '@/components/modals/EditProductionModal';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
 
@@ -15,6 +16,7 @@ interface Production {
   outputQty: number;
   output: {
     sku: {
+      id: string;
       code: string;
       name: string;
     }
@@ -36,6 +38,10 @@ export default function ProduksiPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [selectedProduction, setSelectedProduction] = useState<Production | null>(null);
+  const [editProduction, setEditProduction] = useState<Production | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -77,6 +83,54 @@ export default function ProduksiPage() {
       throw error;
     }
   }
+
+  async function handleEditProduction(id: string, data: { date: string; outputQty: number; notes: string }) {
+    try {
+      setEditLoading(true);
+      const res = await fetch(`/api/productions/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Gagal memperbarui produksi');
+      }
+
+      showToast({ message: 'Produksi berhasil diperbarui', type: 'success' });
+      setEditProduction(null);
+      fetchProductions();
+    } catch (error: any) {
+      throw error;
+    } finally {
+      setEditLoading(false);
+    }
+  }
+
+  async function handleDeleteProduction(id: string) {
+    try {
+      setDeleteLoading(true);
+      const res = await fetch(`/api/productions/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Gagal menghapus produksi');
+      }
+
+      showToast({ message: 'Produksi berhasil dihapus dan stok bahan dikembalikan', type: 'success' });
+      setDeleteConfirmId(null);
+      fetchProductions();
+    } catch (error: any) {
+      showToast({ message: error.message || 'Gagal menghapus produksi', type: 'error' });
+    } finally {
+      setDeleteLoading(false);
+    }
+  }
+
+  const productionToDelete = productions.find((p) => p.id === deleteConfirmId);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: colors.neutral.bg }}>
@@ -133,13 +187,29 @@ export default function ProduksiPage() {
                     <td className="px-6 py-4 text-center font-medium">{p.outputQty.toLocaleString('id-ID')}</td>
                     <td className="px-6 py-4 text-gray-400 text-xs italic">{p.notes || '—'}</td>
                     <td className="px-6 py-4 text-right">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setSelectedProduction(p)}
-                      >
-                        Detail
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setSelectedProduction(p)}
+                        >
+                          Detail
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setEditProduction(p)}
+                        >
+                          ✏️ Edit
+                        </Button>
+                        <button
+                          onClick={() => setDeleteConfirmId(p.id)}
+                          className="px-3 py-1.5 rounded text-xs font-semibold border transition-colors text-red-600 border-red-200 hover:bg-red-50 hover:border-red-400"
+                          title="Hapus sesi produksi"
+                        >
+                          🗑️ Hapus
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -149,12 +219,14 @@ export default function ProduksiPage() {
         </div>
       </div>
 
+      {/* Add Production Modal */}
       <AddProductionModal
         isOpen={showAddModal}
         onSubmit={handleAddProduction}
         onCancel={() => setShowAddModal(false)}
       />
 
+      {/* Bulk Paste Modal */}
       <BulkProductionModal
         isOpen={showBulkModal}
         onClose={() => setShowBulkModal(false)}
@@ -164,11 +236,70 @@ export default function ProduksiPage() {
         }}
       />
 
+      {/* Detail Modal */}
       <ProductionDetailModal
         isOpen={!!selectedProduction}
         production={selectedProduction}
         onClose={() => setSelectedProduction(null)}
       />
+
+      {/* Edit Modal */}
+      <EditProductionModal
+        isOpen={!!editProduction}
+        production={editProduction}
+        isLoading={editLoading}
+        onSubmit={handleEditProduction}
+        onCancel={() => setEditProduction(null)}
+      />
+
+      {/* Delete Confirm Dialog */}
+      {deleteConfirmId && productionToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div
+            className="rounded-lg p-6 max-w-md w-full mx-4 shadow-xl"
+            style={{ backgroundColor: colors.neutral.card }}
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0 text-xl">
+                🗑️
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900 mb-1">Hapus Sesi Produksi?</h3>
+                <p className="text-sm text-gray-600 mb-1">
+                  Anda akan menghapus sesi produksi berikut:
+                </p>
+                <div className="p-3 rounded border bg-gray-50 text-sm mb-3" style={{ borderColor: colors.neutral.border }}>
+                  <p className="font-bold text-gray-800">{productionToDelete.output.sku.name}</p>
+                  <p className="text-gray-500 text-xs">
+                    {new Date(productionToDelete.date).toLocaleDateString('id-ID')} &bull;{' '}
+                    Qty: {productionToDelete.outputQty.toLocaleString('id-ID')} unit
+                  </p>
+                </div>
+                <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
+                  ⚠️ Seluruh stok bahan baku yang dikonsumsi akan dikembalikan, dan stok output akan dikurangi. Tindakan ini tidak dapat dibatalkan.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end mt-5">
+              <Button
+                variant="secondary"
+                onClick={() => setDeleteConfirmId(null)}
+                disabled={deleteLoading}
+              >
+                Batal
+              </Button>
+              <button
+                onClick={() => handleDeleteProduction(deleteConfirmId)}
+                disabled={deleteLoading}
+                className="px-4 py-2 rounded text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {deleteLoading ? 'Menghapus...' : 'Ya, Hapus Produksi'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

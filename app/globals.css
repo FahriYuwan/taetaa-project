@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+:root {
+  --danger-red: #EF4444;
+  --warning-orange: #F97316;
+  --success-green: #10B981;
+  --brand-500: #1E88E5;
+  --brand-400: #4FC3F7;
+  --brand-700: #1257A6;
+}

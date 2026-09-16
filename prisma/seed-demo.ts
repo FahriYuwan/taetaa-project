@@ -1,4 +1,4 @@
-import { PrismaClient, SKUType, Channel, MovementType, BOMCategory, ConsumptionType, ExpenseCategory, BreakageCategory } from '@prisma/client';
+import { PrismaClient, SKUType, Channel, MovementType, BOMCategory, ConsumptionType, ExpenseCategory, BreakageCategory, AffiliateActivityType } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import * as dotenv from 'dotenv';
@@ -17,6 +17,7 @@ async function main() {
   await prisma.stockOpnameItem.deleteMany({});
   await prisma.stockOpname.deleteMany({});
   await prisma.breakage.deleteMany({});
+  await prisma.affiliateActivity.deleteMany({});
   await prisma.otherExpense.deleteMany({});
   await prisma.return.deleteMany({});
   await prisma.marketing.deleteMany({});
@@ -76,34 +77,34 @@ async function main() {
   console.log('--- SEEDING MASTER SKU ---');
   // RAW Materials dengan productSize terisi (ml)
   const sbnRaw = await prisma.sKU.create({
-    data: { code: 'SBN', name: 'Sabun 20 Liter (Curah)', type: SKUType.RAW, productSize: 20000, hppPrice: 5000 }
+    data: { code: 'SBN', name: 'Sabun 20 Liter (Curah)', type: SKUType.RAW, productSize: 20000, hppPrice: 5000, stockMin: 100 }
   });
   const pbgRaw = await prisma.sKU.create({
-    data: { code: 'PBG', name: 'Parfum Bubblegum 5 Liter', type: SKUType.RAW, productSize: 5000, hppPrice: 200000 }
+    data: { code: 'PBG', name: 'Parfum Bubblegum 5 Liter', type: SKUType.RAW, productSize: 5000, hppPrice: 200000, stockMin: 10 }
   });
   const pcfRaw = await prisma.sKU.create({
-    data: { code: 'PCF', name: 'Parfum Kopi 5 Liter', type: SKUType.RAW, productSize: 5000, hppPrice: 250000 }
+    data: { code: 'PCF', name: 'Parfum Kopi 5 Liter', type: SKUType.RAW, productSize: 5000, hppPrice: 250000, stockMin: 10 }
   });
   const pvlRaw = await prisma.sKU.create({
-    data: { code: 'PVL', name: 'Parfum Vanila 5 Liter', type: SKUType.RAW, productSize: 5000, hppPrice: 220000 }
+    data: { code: 'PVL', name: 'Parfum Vanila 5 Liter', type: SKUType.RAW, productSize: 5000, hppPrice: 220000, stockMin: 10 }
   });
 
   // PRODUCT (Setengah Jadi)
   const baseProduct = await prisma.sKU.create({
-    data: { code: 'BASE-PROD', name: 'Base Sabun Wangi', type: SKUType.PRODUCT, productSize: 1000, hppPrice: 6000 }
+    data: { code: 'BASE-PROD', name: 'Base Sabun Wangi', type: SKUType.PRODUCT, productSize: 1000, hppPrice: 6000, stockMin: 0 }
   });
   await prisma.bOMComponent.create({
-    data: { parentId: baseProduct.id, childSkuId: sbnRaw.id, category: BOMCategory.RAW, quantity: 1, consumptionType: ConsumptionType.AUTOMATIC }
+    data: { parentId: baseProduct.id, childSkuId: sbnRaw.id, category: BOMCategory.RAW, quantity: 0.05, consumptionType: ConsumptionType.AUTOMATIC } // 1.000 ml / 20.000 ml = 0.05 unit
   });
 
   // PACKAGE (Produk Jadi Siap Jual)
   const sbn1Pbg = await prisma.sKU.create({
-    data: { code: 'SBN1-PBG', name: 'Sabun 1 Liter Bubblegum', type: SKUType.PACKAGE, productSize: 1000, hppPrice: 12000, sellingPrice: 25000 }
+    data: { code: 'SBN1-PBG', name: 'Sabun 1 Liter Bubblegum', type: SKUType.PACKAGE, productSize: 1000, hppPrice: 12000, sellingPrice: 25000, stockMin: 35 }
   });
   await prisma.bOMComponent.createMany({
     data: [
-      { parentId: sbn1Pbg.id, childSkuId: sbnRaw.id, category: BOMCategory.RAW, quantity: 1, consumptionType: ConsumptionType.AUTOMATIC },
-      { parentId: sbn1Pbg.id, childSkuId: pbgRaw.id, category: BOMCategory.RAW, quantity: 0.05, consumptionType: ConsumptionType.AUTOMATIC },
+      { parentId: sbn1Pbg.id, childSkuId: sbnRaw.id, category: BOMCategory.RAW, quantity: 0.05, consumptionType: ConsumptionType.AUTOMATIC }, // 1.000 ml / 20.000 ml = 0.05 jerigen
+      { parentId: sbn1Pbg.id, childSkuId: pbgRaw.id, category: BOMCategory.RAW, quantity: 0.004, consumptionType: ConsumptionType.AUTOMATIC }, // 20 ml / 5.000 ml = 0.004 jerigen
       { parentId: sbn1Pbg.id, childKemasanId: btl1.id, category: BOMCategory.PACKING, quantity: 1, consumptionType: ConsumptionType.AUTOMATIC },
       { parentId: sbn1Pbg.id, childKemasanId: stk1.id, category: BOMCategory.STIKER, quantity: 1, consumptionType: ConsumptionType.AUTOMATIC },
       { parentId: sbn1Pbg.id, childKemasanId: tbtl.id, category: BOMCategory.SAFETY, quantity: 1, consumptionType: ConsumptionType.AUTOMATIC },
@@ -113,12 +114,12 @@ async function main() {
   });
 
   const sbn2Pcf = await prisma.sKU.create({
-    data: { code: 'SBN2-PCF', name: 'Sabun 500 ML Kopi', type: SKUType.PACKAGE, productSize: 500, hppPrice: 7000, sellingPrice: 15000 }
+    data: { code: 'SBN2-PCF', name: 'Sabun 500 ML Kopi', type: SKUType.PACKAGE, productSize: 500, hppPrice: 7000, sellingPrice: 15000, stockMin: 50 }
   });
   await prisma.bOMComponent.createMany({
     data: [
-      { parentId: sbn2Pcf.id, childSkuId: sbnRaw.id, category: BOMCategory.RAW, quantity: 0.5, consumptionType: ConsumptionType.AUTOMATIC },
-      { parentId: sbn2Pcf.id, childSkuId: pcfRaw.id, category: BOMCategory.RAW, quantity: 0.025, consumptionType: ConsumptionType.AUTOMATIC },
+      { parentId: sbn2Pcf.id, childSkuId: sbnRaw.id, category: BOMCategory.RAW, quantity: 0.025, consumptionType: ConsumptionType.AUTOMATIC }, // 500 ml / 20.000 ml = 0.025 jerigen
+      { parentId: sbn2Pcf.id, childSkuId: pcfRaw.id, category: BOMCategory.RAW, quantity: 0.002, consumptionType: ConsumptionType.AUTOMATIC }, // 10 ml / 5.000 ml = 0.002 jerigen
       { parentId: sbn2Pcf.id, childKemasanId: btl500.id, category: BOMCategory.PACKING, quantity: 1, consumptionType: ConsumptionType.AUTOMATIC },
       { parentId: sbn2Pcf.id, childKemasanId: stk2.id, category: BOMCategory.STIKER, quantity: 1, consumptionType: ConsumptionType.AUTOMATIC },
       { parentId: sbn2Pcf.id, childKemasanId: tbtl.id, category: BOMCategory.SAFETY, quantity: 1, consumptionType: ConsumptionType.AUTOMATIC },
@@ -128,12 +129,12 @@ async function main() {
   });
 
   const sbn3Pvl = await prisma.sKU.create({
-    data: { code: 'SBN3-PVL', name: 'Sabun 100 ML Vanila', type: SKUType.PACKAGE, productSize: 100, hppPrice: 3000, sellingPrice: 5000 }
+    data: { code: 'SBN3-PVL', name: 'Sabun 100 ML Vanila', type: SKUType.PACKAGE, productSize: 100, hppPrice: 3000, sellingPrice: 5000, stockMin: 10 }
   });
   await prisma.bOMComponent.createMany({
     data: [
-      { parentId: sbn3Pvl.id, childSkuId: sbnRaw.id, category: BOMCategory.RAW, quantity: 0.1, consumptionType: ConsumptionType.AUTOMATIC },
-      { parentId: sbn3Pvl.id, childSkuId: pvlRaw.id, category: BOMCategory.RAW, quantity: 0.01, consumptionType: ConsumptionType.AUTOMATIC },
+      { parentId: sbn3Pvl.id, childSkuId: sbnRaw.id, category: BOMCategory.RAW, quantity: 0.005, consumptionType: ConsumptionType.AUTOMATIC }, // 100 ml / 20.000 ml = 0.005 jerigen
+      { parentId: sbn3Pvl.id, childSkuId: pvlRaw.id, category: BOMCategory.RAW, quantity: 0.0004, consumptionType: ConsumptionType.AUTOMATIC }, // 2 ml / 5.000 ml = 0.0004 jerigen
       { parentId: sbn3Pvl.id, childKemasanId: btl100.id, category: BOMCategory.PACKING, quantity: 1, consumptionType: ConsumptionType.AUTOMATIC },
       { parentId: sbn3Pvl.id, childKemasanId: stk3.id, category: BOMCategory.STIKER, quantity: 1, consumptionType: ConsumptionType.AUTOMATIC },
       { parentId: sbn3Pvl.id, childKemasanId: tbtl.id, category: BOMCategory.SAFETY, quantity: 1, consumptionType: ConsumptionType.AUTOMATIC },
@@ -222,11 +223,39 @@ async function main() {
   await prisma.masterItemKemasan.update({ where: { id: btl500.id }, data: { stock: { decrement: 100 } } });
   // plwr.id tidak diupdate karena tidak dicentang!
 
-  console.log('--- SEEDING SALES (INCLUDING AFFILIATE CHANNEL) ---');
+  // Produksi 3: SBN3-PVL (output: 13 unit -> setelah terjual 5 & affiliate 5, sisa stock = 3; stockMin = 10)
+  const prod3Output = await prisma.productionOutput.create({ data: { skuId: sbn3Pvl.id } });
+  const prod3 = await prisma.production.create({
+    data: {
+      date: new Date('2026-09-06'),
+      outputId: prod3Output.id,
+      outputQty: 13,
+      notes: 'Sesi Produksi Sabun Vanila 100ml',
+      inputs: {
+        create: [
+          { inputSkuId: sbnRaw.id, qtyUsed: 0.065 },
+          { inputSkuId: pvlRaw.id, qtyUsed: 0.0052 }
+        ]
+      }
+    }
+  });
+  await prisma.inventory.createMany({
+    data: [
+      { date: new Date('2026-09-06'), skuId: sbnRaw.id, movement: -0.065, type: MovementType.PRODUCTION, reference: prod3.id },
+      { date: new Date('2026-09-06'), skuId: pvlRaw.id, movement: -0.0052, type: MovementType.PRODUCTION, reference: prod3.id },
+      { date: new Date('2026-09-06'), skuId: sbn3Pvl.id, movement: 13, type: MovementType.PRODUCTION, reference: prod3.id }
+    ]
+  });
+  await prisma.sKUCostHistory.create({ data: { skuId: sbn3Pvl.id, stock: 13, avgCost: 3000 } });
+  await prisma.sKUCostHistory.update({ where: { skuId: sbnRaw.id }, data: { stock: { decrement: 0.065 } } });
+  await prisma.sKUCostHistory.update({ where: { skuId: pvlRaw.id }, data: { stock: { decrement: 0.0052 } } });
+  await prisma.masterItemKemasan.update({ where: { id: btl100.id }, data: { stock: { decrement: 13 } } });
+
+  console.log('--- SEEDING SALES (PURE MARKETPLACE CHANNELS) ---');
   const sales = [
-    { date: '2026-09-07', channel: Channel.AFFILIATE, skuId: sbn1Pbg.id, qty: 10, unitPrice: 25000, fee: 2000, orderId: 'AFF-001', netRevenue: 248000, total: 250000 },
-    { date: '2026-09-08', channel: Channel.AFFILIATE, skuId: sbn2Pcf.id, qty: 20, unitPrice: 15000, fee: 1500, orderId: 'AFF-002', netRevenue: 298500, total: 300000 },
-    { date: '2026-09-08', channel: Channel.AFFILIATE, skuId: sbn3Pvl.id, qty: 5, unitPrice: 5000, fee: 500, orderId: 'AFF-003', netRevenue: 24500, total: 25000 },
+    { date: '2026-09-07', channel: Channel.SHOPEE, skuId: sbn1Pbg.id, qty: 10, unitPrice: 25000, fee: 2000, orderId: 'SHP-101', netRevenue: 248000, total: 250000 },
+    { date: '2026-09-08', channel: Channel.TIKTOK, skuId: sbn2Pcf.id, qty: 15, unitPrice: 15000, fee: 1500, orderId: 'TT-201', netRevenue: 223500, total: 225000 },
+    { date: '2026-09-08', channel: Channel.OFFLINE, skuId: sbn3Pvl.id, qty: 5, unitPrice: 5000, fee: 0, orderId: 'OFF-301', netRevenue: 25000, total: 25000 },
     { date: '2026-09-09', channel: Channel.SHOPEE, skuId: sbn1Pbg.id, qty: 5, unitPrice: 25000, fee: 1000, orderId: 'SHP-102', netRevenue: 124000, total: 125000 },
   ];
 
@@ -240,6 +269,116 @@ async function main() {
     const ch = await prisma.sKUCostHistory.findUnique({ where: { skuId: s.skuId } });
     if (ch) {
       await prisma.sKUCostHistory.update({ where: { skuId: s.skuId }, data: { stock: { decrement: s.qty } } });
+    }
+  }
+
+  console.log('--- SEEDING AFFILIATE & NON-AFFILIATE ACTIVITIES ---');
+  const affiliateActivities = [
+    {
+      date: new Date('2026-09-07'),
+      activityType: AffiliateActivityType.AFFILIATE,
+      accountUsername: '@dapur_bunda_wina',
+      realName: 'Wina Andriani',
+      skuId: sbn1Pbg.id,
+      qty: 2,
+      courier: 'J&T Express',
+      shippingCost: 18000,
+      marketplace: 'TikTok',
+      followers: '240K',
+      affiliateData: '1.420 klik, 95 keranjang',
+      notes: 'Seeding video review kebersihan dapur'
+    },
+    {
+      date: new Date('2026-09-08'),
+      activityType: AffiliateActivityType.AFFILIATE,
+      accountUsername: '@racunshopee_lifestyle',
+      realName: 'Rian Pratama',
+      skuId: sbn2Pcf.id,
+      qty: 3,
+      courier: 'SiCepat',
+      shippingCost: 14000,
+      marketplace: 'Shopee',
+      followers: '580K',
+      affiliateData: '3.100 klik, 142 pesanan',
+      notes: 'Live streaming Shopee campaign 9.9'
+    },
+    {
+      date: new Date('2026-09-09'),
+      activityType: AffiliateActivityType.AFFILIATE,
+      accountUsername: '@aroma.rumah.id',
+      realName: 'Dinda Lestari',
+      skuId: sbn3Pvl.id,
+      qty: 5,
+      courier: 'SPX Express',
+      shippingCost: 11000,
+      marketplace: 'Shopee',
+      followers: '85K',
+      affiliateData: '620 klik, 38 pesanan',
+      notes: 'Spill produk hampers aroma wangi'
+    },
+    {
+      date: new Date('2026-09-10'),
+      activityType: AffiliateActivityType.AFFILIATE,
+      accountUsername: '@bersihkinclong.daily',
+      realName: 'Hendra Wijaya',
+      skuId: sbn1Pbg.id,
+      qty: 2,
+      courier: 'J&T Express',
+      shippingCost: 19000,
+      marketplace: 'TikTok',
+      followers: '410K',
+      affiliateData: '2.800 klik, 110 order',
+      notes: 'Review bundling sabun cuci tangan viral'
+    },
+    {
+      date: new Date('2026-09-06'),
+      activityType: AffiliateActivityType.NON_AFFILIATE,
+      accountUsername: null,
+      realName: 'Yudhis Pratama',
+      skuId: sbn1Pbg.id,
+      qty: 2,
+      courier: null,
+      shippingCost: 0,
+      marketplace: null,
+      followers: null,
+      affiliateData: null,
+      notes: 'Compliment Yudhis'
+    },
+    {
+      date: new Date('2026-09-07'),
+      activityType: AffiliateActivityType.NON_AFFILIATE,
+      accountUsername: null,
+      realName: 'Event Organizer Jakarta Expo',
+      skuId: sbn2Pcf.id,
+      qty: 4,
+      courier: 'GoSend Instant',
+      shippingCost: 35000,
+      marketplace: null,
+      followers: null,
+      affiliateData: null,
+      notes: 'Marketing Sample Event Booth FMCG'
+    }
+  ];
+
+  for (const act of affiliateActivities) {
+    const activity = await prisma.affiliateActivity.create({
+      data: act
+    });
+    await prisma.inventory.create({
+      data: {
+        date: act.date,
+        skuId: act.skuId,
+        movement: -act.qty,
+        type: MovementType.AFFILIATE_SEEDING,
+        reference: activity.id
+      }
+    });
+    const ch = await prisma.sKUCostHistory.findUnique({ where: { skuId: act.skuId } });
+    if (ch) {
+      await prisma.sKUCostHistory.update({
+        where: { skuId: act.skuId },
+        data: { stock: { decrement: act.qty } }
+      });
     }
   }
 

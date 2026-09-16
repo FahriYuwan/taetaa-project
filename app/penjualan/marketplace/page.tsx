@@ -41,18 +41,13 @@ export default function PenjualanMarketplacePage() {
   async function fetchSales() {
     try {
       setLoading(true);
-      // Filter out AFFILIATE for marketplace main view to keep them distinct, or allow filter
       const url = channelFilter === 'all'
         ? '/api/sales'
         : `/api/sales?channel=${channelFilter}`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        // Filter out Affiliate from general Marketplace page to keep them separate
-        const filteredData = channelFilter === 'all'
-          ? data.filter((s: Sale) => s.channel !== 'AFFILIATE')
-          : data;
-        setSales(filteredData);
+        setSales(data);
       }
     } catch (error) {
       showToast({ message: 'Gagal memuat data penjualan', type: 'error' });
@@ -95,7 +90,7 @@ export default function PenjualanMarketplacePage() {
               className="px-4 py-2 rounded border text-sm bg-white"
               style={{ borderColor: colors.neutral.border }}
             >
-              <option value="all">Semua Channel (Non-Affiliate)</option>
+              <option value="all">Semua Channel</option>
               <option value="SHOPEE">Shopee</option>
               <option value="TIKTOK">TikTok Shop</option>
               <option value="OFFLINE">Offline</option>

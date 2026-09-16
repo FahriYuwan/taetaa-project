@@ -74,19 +74,26 @@ export function AddProductionModal({
     try {
       const status = [];
       for (const bom of sku.bomComponents) {
-        // Fetch SKU with its cost history (which contains current stock)
-        const res = await fetch(`/api/skus/${bom.childId}`);
-        const skuDetail = await res.json();
+        let available = 0;
+        const item = bom.childSku || bom.childKemasan;
+        const name = item?.name || 'Komponen';
 
-        // In our current API, /api/skus/[id] might not return cost history stock directly.
-        // Let's check the API implementation.
-        const available = skuDetail.stock ?? 0; // We need to ensure the API provides this
+        if (bom.category === 'RAW' && bom.childSkuId) {
+          const res = await fetch(`/api/skus/${bom.childSkuId}`);
+          if (res.ok) {
+            const skuDetail = await res.json();
+            available = skuDetail.stock ?? 0;
+          }
+        } else if (bom.childKemasanId) {
+          available = bom.childKemasan?.stock ?? 0;
+        }
 
+        const needed = bom.quantity * qty;
         status.push({
-          name: bom.child.name,
-          needed: bom.quantity * qty,
-          available: available,
-          isEnough: available >= (bom.quantity * qty)
+          name,
+          needed,
+          available,
+          isEnough: available >= needed
         });
       }
       setComponentStatus(status);
@@ -248,10 +255,25 @@ export function AddProductionModal({
                           </label>
                         </div>
                       ) : (
-                        <div className="flex justify-between text-[11px] text-gray-500 mt-1">
-                          <span>Butuh: {needed.toLocaleString('id-ID')} {bom.category === 'RAW' ? 'ml' : 'pcs'}</span>
+                        <div className="flex justify-between items-end text-[11px] text-gray-500 mt-1">
+                          <div>
+                            {bom.category === 'RAW' ? (
+                              <span>
+                                Butuh: <strong className="text-gray-800">{needed.toLocaleString('id-ID', { maximumFractionDigits: 4 })} unit</strong>
+                                {item?.productSize ? (
+                                  <span className="text-gray-500 font-medium ml-1">
+                                    (~{(needed * item.productSize >= 1000)
+                                      ? `${((needed * item.productSize) / 1000).toLocaleString('id-ID', { maximumFractionDigits: 2 })} L`
+                                      : `${Math.round(needed * item.productSize).toLocaleString('id-ID')} ml`})
+                                  </span>
+                                ) : null}
+                              </span>
+                            ) : (
+                              <span>Butuh: <strong className="text-gray-800">{needed.toLocaleString('id-ID')} pcs</strong></span>
+                            )}
+                          </div>
                           <span className="font-medium" style={{ color: colors.brand[500] }}>
-                            {bom.quantity} / unit
+                            {bom.quantity} {bom.category === 'RAW' ? 'unit' : 'pcs'} / out
                           </span>
                         </div>
                       )}

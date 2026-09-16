@@ -19,6 +19,7 @@ interface SKUFormData {
   productSize: number;
   hppPrice: number;
   sellingPrice?: number;
+  stockMin?: number | null;
   bomComponents: BOMComponentInput[];
 }
 
@@ -44,11 +45,13 @@ export function AddEditSKUModal({
     productSize: 0,
     hppPrice: 0,
     sellingPrice: undefined,
+    stockMin: 0,
     bomComponents: [],
   });
   const [selectedCategory, setSelectedCategory] = useState<'RAW' | 'PACKING' | 'STIKER' | 'SAFETY' | 'DUS'>('RAW');
   const [selectedChildId, setSelectedChildId] = useState('');
   const [selectedQty, setSelectedQty] = useState(0);
+  const [availableComponents, setAvailableComponents] = useState<any[]>([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -61,6 +64,7 @@ export function AddEditSKUModal({
           productSize: initialData.productSize || 0,
           hppPrice: initialData.hppPrice || 0,
           sellingPrice: initialData.sellingPrice,
+          stockMin: initialData.stockMin !== undefined ? initialData.stockMin : 0,
           bomComponents: initialData.bomComponents ? initialData.bomComponents.map((b: any) => ({
             childId: b.childSkuId || b.childKemasanId,
             category: b.category,
@@ -77,6 +81,7 @@ export function AddEditSKUModal({
           productSize: 0,
           hppPrice: 0,
           sellingPrice: undefined,
+          stockMin: 0,
           bomComponents: [],
         });
       }
@@ -315,6 +320,28 @@ export function AddEditSKUModal({
                   )}
                 </div>
               )}
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
+                  Stok Minimum (Opsional)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.stockMin ?? ''}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    stockMin: e.target.value === '' ? null : parseFloat(e.target.value) 
+                  })}
+                  className="w-full px-3 py-2 rounded border text-sm focus:outline-none focus:ring-2"
+                  style={{ borderColor: colors.neutral.border, '--tw-ring-color': colors.brand[500] } as any}
+                  disabled={isLoading}
+                  placeholder="0 (atau kosongkan jika tanpa threshold)"
+                />
+                <p className="mt-1 text-[10px] text-gray-500">
+                  Peringatan restock aktif jika stok &lt; stok minimum. Isi 0 atau kosongkan jika tanpa batas minimum.
+                </p>
+              </div>
             </div>
 
             {/* Right Column: BOM Components */}
@@ -358,21 +385,36 @@ export function AddEditSKUModal({
                     <div className="flex-1 relative">
                       <input
                         type="number"
-                        step="0.01"
+                        step="any"
                         value={selectedQty || ''}
                         onChange={(e) => setSelectedQty(parseFloat(e.target.value))}
                         className="w-full px-3 py-2 rounded border text-sm"
                         style={{ borderColor: colors.neutral.border }}
-                        placeholder="Qty per Unit"
+                        placeholder={selectedCategory === 'RAW' ? "Qty Unit (cth: 0.05)" : "Qty (pcs)"}
                       />
                       <span className="absolute right-3 top-2 text-[10px] text-gray-400 font-bold">
-                        {selectedCategory === 'RAW' ? 'ML' : 'PCS'}
+                        {selectedCategory === 'RAW' ? 'UNIT' : 'PCS'}
                       </span>
                     </div>
                     <Button type="button" variant="secondary" onClick={addComponent} style={{ width: '100px' }}>
                       Add
                     </Button>
                   </div>
+                  {selectedCategory === 'RAW' && selectedChildId && (() => {
+                    const sel = availableComponents.find(c => c.id === selectedChildId);
+                    if (!sel || !sel.productSize) return null;
+                    const volMl = (selectedQty || 0) * sel.productSize;
+                    return (
+                      <div className="text-[11px] text-gray-500 italic mt-1">
+                        Kapasitas bahan baku: {sel.productSize >= 1000 ? `${sel.productSize / 1000} L` : `${sel.productSize} ml`} / unit.
+                        {selectedQty > 0 && (
+                          <span className="font-semibold text-blue-600 ml-1">
+                            (~{volMl >= 1000 ? `${(volMl / 1000).toLocaleString('id-ID', { maximumFractionDigits: 2 })} Liter` : `${Math.round(volMl).toLocaleString('id-ID')} ml`})
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Component List */}
@@ -396,7 +438,7 @@ export function AddEditSKUModal({
                                 <span className="font-medium text-gray-700">{comp.childName}</span>
                                 <div className="flex gap-2 mt-0.5">
                                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-bold">
-                                    {comp.quantity} {cat === 'RAW' ? 'ml' : 'pcs'}
+                                    {comp.quantity} {cat === 'RAW' ? 'unit' : 'pcs'}
                                   </span>
                                   {comp.consumptionType === 'MANUAL' && (
                                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 font-bold">

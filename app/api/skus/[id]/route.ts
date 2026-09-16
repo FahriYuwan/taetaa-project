@@ -51,7 +51,28 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { code, name, type, sellingPrice, bomComponents } = body;
+
+    const {
+      code,
+      name,
+      type,
+      productSize,
+      hppPrice,
+      sellingPrice,
+      stockMin,
+      bomComponents,
+    } = body;
+
+    // Normalize stockMin: allow null, empty string, or numeric value
+    let normalizedStockMin: number | null | undefined = undefined;
+    if (stockMin !== undefined) {
+      if (stockMin === null || stockMin === '') {
+        normalizedStockMin = null;
+      } else {
+        const parsed = parseFloat(stockMin);
+        normalizedStockMin = isNaN(parsed) ? null : parsed;
+      }
+    }
 
     const sku = await prisma.$transaction(async (tx) => {
       const updatedSku = await tx.sKU.update({
@@ -60,9 +81,10 @@ export async function PUT(
           code,
           name,
           type,
-          productSize: body.productSize || 0,
-          hppPrice: body.hppPrice || 0,
+          productSize: productSize || 0,
+          hppPrice: hppPrice || 0,
           sellingPrice: type === 'PACKAGE' ? sellingPrice : null,
+          ...(normalizedStockMin !== undefined ? { stockMin: normalizedStockMin } : {}),
         },
       });
 
@@ -76,8 +98,11 @@ export async function PUT(
           await tx.bOMComponent.createMany({
             data: bomComponents.map((comp: any) => ({
               parentId: id,
-              childId: comp.childId,
+              childSkuId: comp.category === 'RAW' ? comp.childId : null,
+              childKemasanId: comp.category !== 'RAW' ? comp.childId : null,
+              category: comp.category,
               quantity: comp.quantity,
+              consumptionType: comp.consumptionType || 'AUTOMATIC',
             })),
           });
         }
@@ -93,6 +118,7 @@ export async function PUT(
 
     return NextResponse.json(sku);
   } catch (error: any) {
+    console.error('PUT /api/skus/[id] error:', error);
     if (error.code === 'P2025') {
       return NextResponse.json(
         { error: 'SKU not found' },
@@ -100,7 +126,7 @@ export async function PUT(
       );
     }
     return NextResponse.json(
-      { error: 'Failed to update SKU' },
+      { error: error.message || 'Failed to update SKU' },
       { status: 500 }
     );
   }

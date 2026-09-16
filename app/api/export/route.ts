@@ -73,11 +73,11 @@ export async function GET(req: Request) {
       }
       case 'skus': {
         const skus = await prisma.sKU.findMany({
-          include: { bomComponents: { include: { child: true } } }
+          include: { bomComponents: { include: { childSku: true } } }
         });
         csvContent = "SKU Code,Nama,Tipe,Selling Price,BOM Components\n";
         skus.forEach(sku => {
-          const bom = sku.bomComponents.map(b => `${b.child.code}(${b.quantity})`).join("; ");
+          const bom = sku.bomComponents.map((b: any) => `${b.childSku?.code ?? b.childSkuId}(${b.quantity})`).join("; ");
           csvContent += `${sku.code},${sku.name},${sku.type},${sku.sellingPrice || 0},"${bom}"\n`;
         });
         break;

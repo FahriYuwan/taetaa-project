@@ -27,7 +27,9 @@ interface InventoryItem {
   keluarProduksi: number;
   keluarJual: number;
   keluarBreakage: number;
+  keluarAffiliate: number;
   stockAkhir: number;
+  stockMin?: number | null;
   avgCost: number;
   nilaiStock: number;
   rawBreakdown?: Array<{
@@ -52,7 +54,7 @@ export default function InventoryDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<InventoryData | null>(null);
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'RAW' | 'PRODUCT' | 'PACKAGE' | 'RESTOCK'>('all');
   const [viewingBreakdown, setViewingBreakdown] = useState<InventoryItem | null>(null);
 
   // Date filters
@@ -85,8 +87,14 @@ export default function InventoryDashboardPage() {
   const filteredItems = data?.items.filter(item => {
     const matchesSearch = item.code.toLowerCase().includes(search.toLowerCase()) ||
                          item.name.toLowerCase().includes(search.toLowerCase());
-    const matchesType = typeFilter === 'all' || item.type === typeFilter;
-    return matchesSearch && matchesType;
+    if (!matchesSearch) return false;
+
+    if (typeFilter === 'RESTOCK') {
+      const min = item.stockMin ?? 0;
+      return min > 0 && item.stockAkhir < min;
+    }
+
+    return typeFilter === 'all' || item.type === typeFilter;
   }) || [];
 
   const top5ItemsSold = data?.items
@@ -250,17 +258,23 @@ export default function InventoryDashboardPage() {
         <div className="bg-white rounded-lg border shadow-sm overflow-hidden" style={{ borderColor: colors.neutral.border }}>
           {/* Tabs */}
           <div className="flex border-b bg-gray-50/50" style={{ borderColor: colors.neutral.border }}>
-            {(['all', 'RAW', 'PRODUCT', 'PACKAGE'] as const).map((tab) => (
+            {[
+              { id: 'all', label: 'Semua' },
+              { id: 'RAW', label: 'RAW' },
+              { id: 'PRODUCT', label: 'Product' },
+              { id: 'PACKAGE', label: 'PACKAGE' },
+              { id: 'RESTOCK', label: '⚠️ Perlu Restock' }
+            ].map((tab) => (
               <button
-                key={tab}
-                onClick={() => setTypeFilter(tab)}
-                className={`px-6 py-3 text-sm font-bold transition-all border-b-2 ${
-                  typeFilter === tab
-                    ? 'bg-white border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                key={tab.id}
+                onClick={() => setTypeFilter(tab.id as any)}
+                className={`px-6 py-3 text-sm font-bold transition-all border-b-2 flex items-center gap-1.5 ${
+                  typeFilter === tab.id
+                    ? (tab.id === 'RESTOCK' ? 'bg-white border-red-500 text-red-600' : 'bg-white border-blue-500 text-blue-600')
+                    : (tab.id === 'RESTOCK' ? 'border-transparent text-red-500/80 hover:text-red-600' : 'border-transparent text-gray-400 hover:text-gray-600')
                 }`}
               >
-                {tab === 'all' ? 'Semua' : (tab === 'PRODUCT' ? 'Product' : tab)}
+                <span>{tab.label}</span>
               </button>
             ))}
           </div>
@@ -279,6 +293,7 @@ export default function InventoryDashboardPage() {
                   <th className="px-4 py-3 text-right">KELUAR (PROD)</th>
                   <th className="px-4 py-3 text-right">KELUAR (JUAL)</th>
                   <th className="px-4 py-3 text-right">KELUAR (RUSAK)</th>
+                  <th className="px-4 py-3 text-right">KELUAR (AFF/SEED)</th>
                   <th className="px-4 py-3 text-right font-bold text-gray-900">STOCK AKHIR</th>
                   <th className="px-4 py-3 text-right">AVG COST</th>
                   <th className="px-4 py-3 text-right">NILAI STOCK</th>
@@ -287,12 +302,14 @@ export default function InventoryDashboardPage() {
               <tbody className="divide-y" style={{ borderColor: colors.neutral.border }}>
                 {loading ? (
                   <tr>
-                    <td colSpan={11} className="px-6 py-12 text-center text-gray-400">Loading inventory data...</td>
+                    <td colSpan={13} className="px-6 py-12 text-center text-gray-400">Loading inventory data...</td>
                   </tr>
                 ) : filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-6 py-20 text-center text-blue-500 font-medium">
-                      Tidak ada data.
+                    <td colSpan={13} className="px-6 py-20 text-center font-medium" style={{ color: typeFilter === 'RESTOCK' ? colors.semantic.green : colors.brand[500] }}>
+                      {typeFilter === 'RESTOCK'
+                        ? 'Semua stok masih aman, tidak ada yang perlu direstock.'
+                        : 'Tidak ada data.'}
                     </td>
                   </tr>
                 ) : (
@@ -309,19 +326,41 @@ export default function InventoryDashboardPage() {
                       <td className="px-4 py-3 text-right text-orange-600">-{item.keluarProduksi.toLocaleString('id-ID')}</td>
                       <td className="px-4 py-3 text-right text-red-600">-{item.keluarJual.toLocaleString('id-ID')}</td>
                       <td className="px-4 py-3 text-right text-red-400">-{item.keluarBreakage.toLocaleString('id-ID')}</td>
-                      <td className={`px-4 py-3 text-right font-bold ${item.stockAkhir <= 10 ? 'text-red-600' : 'text-gray-900'}`}>
-                        <div className="flex items-center justify-end gap-1">
-                          {item.type === 'RAW' && item.rawBreakdown && item.rawBreakdown.length > 0 && (
-                            <button 
-                              onClick={() => setViewingBreakdown(item)}
-                              className="text-blue-400 hover:text-blue-600 p-1"
-                              title="Lihat Breakdown Pemakaian"
-                            >
-                              <FiInfo size={12} />
-                            </button>
-                          )}
-                          {item.stockAkhir.toLocaleString('id-ID')}
-                        </div>
+                      <td className="px-4 py-3 text-right text-purple-600">-{item.keluarAffiliate ? item.keluarAffiliate.toLocaleString('id-ID') : 0}</td>
+                      <td className="px-4 py-3 text-right">
+                        {(() => {
+                          const stockMin = item.stockMin ?? 0;
+                          const isRestockNeeded = stockMin > 0 && item.stockAkhir < stockMin;
+                          const kurang = stockMin - item.stockAkhir;
+
+                          return (
+                            <div className="flex items-center justify-end gap-1 font-bold">
+                              {item.type === 'RAW' && item.rawBreakdown && item.rawBreakdown.length > 0 && (
+                                <button 
+                                  onClick={() => setViewingBreakdown(item)}
+                                  className="text-blue-400 hover:text-blue-600 p-1"
+                                  title="Lihat Breakdown Pemakaian"
+                                >
+                                  <FiInfo size={12} />
+                                </button>
+                              )}
+                              {isRestockNeeded ? (
+                                <div 
+                                  className="inline-flex items-center gap-1 cursor-help"
+                                  style={{ color: colors.semantic.red }}
+                                  title={`Stok saat ini: ${item.stockAkhir} — Stok Minimum: ${stockMin} — Kurang: ${kurang} unit`}
+                                >
+                                  <span>⚠️</span>
+                                  <span>{item.stockAkhir.toLocaleString('id-ID')}</span>
+                                </div>
+                              ) : (
+                                <span className="text-gray-900">
+                                  {item.stockAkhir.toLocaleString('id-ID')}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-right">Rp {item.avgCost.toLocaleString('id-ID')}</td>
                       <td className="px-4 py-3 text-right font-bold" style={{ color: colors.brand[500] }}>

@@ -5,7 +5,7 @@ import { colors, skuTypeColors } from '@/lib/theme';
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary';
   size?: 'sm' | 'md' | 'lg';
-  icon?: string;
+  icon?: React.ReactNode;
   children: React.ReactNode;
 }
 

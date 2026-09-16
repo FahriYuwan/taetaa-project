@@ -1,7 +1,7 @@
 // app/api/kerugian-pengeluaran/lost-breakage/bulk/route.ts
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { MovementType } from '@prisma/client';
+import { MovementType, BreakageCategory } from '@prisma/client';
 
 export async function POST(req: Request) {
     try {
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
                 const unitPrice = priceStr ? parseFloat(priceStr.replace(/[^0-9.]/g, '')) : (costHistory?.avgCost || 0);
 
                 const breakage = await tx.breakage.create({
-                    data: { date, skuId: sku.id, qty, unitPrice, total: qty * unitPrice, notes: notes?.trim() || 'Bulk Import' },
+                    data: { date, skuId: sku.id, qty, unitPrice, total: qty * unitPrice, notes: notes?.trim() || 'Bulk Import', category: BreakageCategory.LAINNYA },
                 });
 
                 await tx.inventory.create({

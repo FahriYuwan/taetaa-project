@@ -22,7 +22,7 @@ export async function POST(req: Request) {
           where: { code: skuCode.trim() },
           include: {
             bomComponents: {
-              include: { child: true }
+              include: { childSku: true, childKemasan: true }
             }
           }
         });
@@ -31,41 +31,69 @@ export async function POST(req: Request) {
 
         let totalProductionCost = 0;
         const productionInputsData = [];
+        let canProduce = true;
+
+        // Verify stock first
+        for (const bom of skuWithBom.bomComponents) {
+          const qtyNeeded = bom.quantity * outputQty;
+          if (bom.category === 'RAW' && bom.childSkuId) {
+            const componentCost = await tx.sKUCostHistory.findUnique({ where: { skuId: bom.childSkuId } });
+            if ((componentCost?.stock || 0) < qtyNeeded) {
+              canProduce = false;
+              break;
+            }
+          } else if (bom.childKemasanId) {
+            const kemasan = await tx.masterItemKemasan.findUnique({ where: { id: bom.childKemasanId } });
+            if ((kemasan?.stock || 0) < qtyNeeded) {
+              canProduce = false;
+              break;
+            }
+          }
+        }
+
+        if (!canProduce) continue;
 
         // Consume components
         for (const bom of skuWithBom.bomComponents) {
           const qtyNeeded = bom.quantity * outputQty;
-          const componentCost = await tx.sKUCostHistory.findUnique({ where: { skuId: bom.childId } });
 
-          const currentStock = componentCost?.stock || 0;
-          const currentAvgCost = componentCost?.avgCost || 0;
+          if (bom.category === 'RAW' && bom.childSkuId) {
+            const componentCost = await tx.sKUCostHistory.findUnique({ where: { skuId: bom.childSkuId } });
+            const currentAvgCost = componentCost?.avgCost || 0;
 
-          if (currentStock < qtyNeeded) continue; // Skip if not enough stock for this line
+            totalProductionCost += qtyNeeded * currentAvgCost;
 
-          totalProductionCost += qtyNeeded * currentAvgCost;
+            await tx.inventory.create({
+              data: {
+                date,
+                skuId: bom.childSkuId,
+                movement: -qtyNeeded,
+                type: MovementType.PRODUCTION,
+                reference: 'BULK_PROD',
+              }
+            });
 
-          await tx.inventory.create({
-            data: {
-              date,
-              skuId: bom.childId,
-              movement: -qtyNeeded,
-              type: MovementType.PRODUCTION,
-              reference: 'BULK_PROD',
-            }
-          });
+            await tx.sKUCostHistory.update({
+              where: { skuId: bom.childSkuId },
+              data: { stock: { decrement: qtyNeeded } }
+            });
 
-          await tx.sKUCostHistory.update({
-            where: { skuId: bom.childId },
-            data: { stock: { decrement: qtyNeeded } }
-          });
+            productionInputsData.push({
+              inputSkuId: bom.childSkuId,
+              qtyUsed: qtyNeeded
+            });
+          } else if (bom.childKemasanId) {
+            const kemasan = await tx.masterItemKemasan.findUnique({ where: { id: bom.childKemasanId } });
+            const currentAvgCost = kemasan?.avgCost || 0;
 
-          productionInputsData.push({
-            inputSkuId: bom.childId,
-            qtyUsed: qtyNeeded
-          });
+            totalProductionCost += qtyNeeded * currentAvgCost;
+
+            await tx.masterItemKemasan.update({
+              where: { id: bom.childKemasanId },
+              data: { stock: { decrement: qtyNeeded } }
+            });
+          }
         }
-
-        if (productionInputsData.length === 0) continue;
 
         const productionOutput = await tx.productionOutput.create({
           data: { skuId: skuWithBom.id }

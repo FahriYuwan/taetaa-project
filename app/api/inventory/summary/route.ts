@@ -34,6 +34,7 @@ export async function GET(req: Request) {
       let keluarProduksi = 0;
       let keluarJual = 0;
       let keluarBreakage = 0;
+      let keluarAffiliate = 0;
 
       sku.inventory.forEach(inv => {
         const invDate = new Date(inv.date);
@@ -49,11 +50,13 @@ export async function GET(req: Request) {
             keluarJual += Math.abs(inv.movement);
           } else if (inv.type === MovementType.BREAKAGE) {
             keluarBreakage += Math.abs(inv.movement);
+          } else if (inv.type === MovementType.AFFILIATE_SEEDING) {
+            keluarAffiliate += Math.abs(inv.movement);
           }
         }
       });
 
-      const stockAkhir = stockAwal + masukBeli + masukProduksi - keluarProduksi - keluarJual - keluarBreakage;
+      const stockAkhir = stockAwal + masukBeli + masukProduksi - keluarProduksi - keluarJual - keluarBreakage - keluarAffiliate;
       const costInfo = costMap.get(sku.id);
       const avgCost = costInfo?.avgCost || 0;
       const nilaiStock = stockAkhir * avgCost;
@@ -117,7 +120,9 @@ export async function GET(req: Request) {
         keluarProduksi,
         keluarJual,
         keluarBreakage,
+        keluarAffiliate,
         stockAkhir,
+        stockMin: sku.stockMin ?? 0,
         avgCost,
         nilaiStock,
         rawBreakdown

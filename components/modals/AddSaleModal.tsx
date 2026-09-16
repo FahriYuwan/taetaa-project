@@ -144,7 +144,6 @@ export function AddSaleModal({
                 <option value="SHOPEE">Shopee</option>
                 <option value="TIKTOK">TikTok Shop</option>
                 <option value="OFFLINE">Offline / Toko</option>
-                <option value="AFFILIATE">Affiliate</option>
               </select>
             </div>
 

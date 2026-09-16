@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/header/PageHeader';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/modals/ConfirmDialog';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
 import { FiAlertTriangle } from 'react-icons/fi';
@@ -11,6 +12,7 @@ import { FiAlertTriangle } from 'react-icons/fi';
 interface Breakage {
   id: string;
   date: string;
+  skuId: string;
   sku: {
     code: string;
     name: string;
@@ -25,6 +27,8 @@ export default function LostBreakagePage() {
   const [items, setItems] = useState<Breakage[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<Breakage | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const { showToast } = useToast();
 
   const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -66,6 +70,42 @@ export default function LostBreakagePage() {
       }
       showToast({ message: 'Kerugian berhasil dicatat', type: 'success' });
       setShowAddModal(false);
+      fetchBreakage();
+    } catch (error: any) {
+      showToast({ message: error.message, type: 'error' });
+    }
+  }
+
+  async function handleEdit(id: string, formData: any) {
+    try {
+      const res = await fetch(`/api/kerugian-pengeluaran/lost-breakage/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Gagal memperbarui kerugian');
+      }
+      showToast({ message: 'Kerugian berhasil diperbarui', type: 'success' });
+      setEditingItem(null);
+      fetchBreakage();
+    } catch (error: any) {
+      showToast({ message: error.message, type: 'error' });
+    }
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      const res = await fetch(`/api/kerugian-pengeluaran/lost-breakage/${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Gagal menghapus kerugian');
+      }
+      showToast({ message: 'Kerugian berhasil dihapus dan stok telah dikembalikan', type: 'success' });
+      setDeleteConfirmId(null);
       fetchBreakage();
     } catch (error: any) {
       showToast({ message: error.message, type: 'error' });
@@ -124,13 +164,14 @@ export default function LostBreakagePage() {
                 <th className="px-6 py-4">KATEGORI / ALASAN</th>
                 <th className="px-6 py-4 text-right">EST. KERUGIAN (RP)</th>
                 <th className="px-6 py-4">CATATAN</th>
+                <th className="px-6 py-4 text-right">AKSI</th>
               </tr>
             </thead>
             <tbody className="divide-y" style={{ borderColor: colors.neutral.border }}>
               {loading ? (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-400">Loading...</td></tr>
+                <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-400">Loading...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-20 text-center text-gray-400 font-medium">Belum ada data.</td></tr>
+                <tr><td colSpan={7} className="px-6 py-20 text-center text-gray-400 font-medium">Belum ada data.</td></tr>
               ) : (
                 items.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50 transition-colors">
@@ -154,6 +195,24 @@ export default function LostBreakagePage() {
                       Rp {item.total.toLocaleString('id-ID')}
                     </td>
                     <td className="px-6 py-4 text-gray-500 italic text-xs">{item.notes || '—'}</td>
+                    <td className="px-6 py-4 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setEditingItem(item)}
+                        >
+                          ✏️ Edit
+                        </Button>
+                        <button
+                          onClick={() => setDeleteConfirmId(item.id)}
+                          className="px-3 py-1.5 rounded text-xs font-semibold border transition-colors text-red-600 border-red-200 hover:bg-red-50 hover:border-red-400"
+                          title="Hapus kerugian"
+                        >
+                          🗑️ Hapus
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -162,25 +221,41 @@ export default function LostBreakagePage() {
         </div>
       </div>
 
-      {showAddModal && (
-        <AddBreakageModal
-          onClose={() => setShowAddModal(false)}
-          onSubmit={handleAdd}
+      {(showAddModal || editingItem) && (
+        <BreakageModal
+          initialData={editingItem}
+          onClose={() => {
+            setShowAddModal(false);
+            setEditingItem(null);
+          }}
+          onSubmit={editingItem ? (data: any) => handleEdit(editingItem.id, data) : handleAdd}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={!!deleteConfirmId}
+        title="Hapus Kerugian"
+        message="Yakin ingin menghapus catatan kerugian ini? Stok SKU terkait akan dikembalikan (reversal) secara otomatis. Aksi tidak bisa dibatalkan."
+        confirmText="Hapus"
+        cancelText="Batal"
+        variant="danger"
+        onConfirm={() => deleteConfirmId && handleDelete(deleteConfirmId)}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </div>
   );
 }
 
-function AddBreakageModal({ onClose, onSubmit }: any) {
+function BreakageModal({ initialData, onClose, onSubmit }: any) {
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
-    skuId: '',
-    qty: 0,
-    category: 'RUSAK',
-    notes: '',
+    date: initialData ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    skuId: initialData ? initialData.skuId : '',
+    qty: initialData ? initialData.qty : 0,
+    category: initialData ? initialData.category : 'RUSAK',
+    notes: initialData?.notes || '',
   });
   const [skus, setSkus] = useState<any[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetch('/api/skus')
@@ -188,10 +263,29 @@ function AddBreakageModal({ onClose, onSubmit }: any) {
       .then(data => setSkus(data));
   }, []);
 
+  const handleSubmit = async () => {
+    if (!formData.skuId) {
+      alert('Pilih SKU terlebih dahulu');
+      return;
+    }
+    if (formData.qty <= 0) {
+      alert('Jumlah (Qty) harus lebih besar dari 0');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      await onSubmit(formData);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
-        <h3 className="text-lg font-bold mb-4 text-red-600">Catat Kerugian (Stok Keluar)</h3>
+        <h3 className="text-lg font-bold mb-4 text-red-600">
+          {initialData ? 'Edit Kerugian' : 'Catat Kerugian (Stok Keluar)'}
+        </h3>
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tanggal</label>
@@ -251,8 +345,15 @@ function AddBreakageModal({ onClose, onSubmit }: any) {
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-3">
-          <Button variant="secondary" onClick={onClose}>Batal</Button>
-          <Button variant="primary" style={{ backgroundColor: colors.semantic.red, borderColor: colors.semantic.red }} onClick={() => onSubmit(formData)}>Simpan Kerugian</Button>
+          <Button variant="secondary" onClick={onClose} disabled={submitting}>Batal</Button>
+          <Button 
+            variant="primary" 
+            style={{ backgroundColor: colors.semantic.red, borderColor: colors.semantic.red }} 
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
+            {submitting ? 'Menyimpan...' : (initialData ? 'Simpan Perubahan' : 'Simpan Kerugian')}
+          </Button>
         </div>
       </div>
     </div>

@@ -22,6 +22,7 @@ model SKU {
   productSize  Float?   @default(0) // in ml
   hppPrice     Float?   @default(0)
   sellingPrice Float? // for PACKAGE only
+  stockMin     Float?   @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -35,10 +36,12 @@ model SKU {
   productionInputs  ProductionInput[]
   breakages         Breakage[]
   stockOpnameItems  StockOpnameItem[]
+  affiliateActivities AffiliateActivity[]
 }
 
 enum SKUType {
   RAW
+  WIP
   PRODUCT
   PACKAGE
 }
@@ -126,6 +129,7 @@ enum MovementType {
   ADJUSTMENT
   BREAKAGE
   RETURN
+  AFFILIATE_SEEDING
 }
 
 model Production {
@@ -255,11 +259,20 @@ model Breakage {
 }
 
 model StockOpname {
-  id          String   @id @default(cuid())
-  date        DateTime
-  notes       String?
-  items       StockOpnameItem[]
-  createdAt   DateTime @default(now())
+  id            String        @id @default(cuid())
+  opnameNumber  String?       // e.g. OPN-20260916-001
+  date          DateTime
+  notes         String?
+  status        OpnameStatus  @default(DRAFT)
+  items         StockOpnameItem[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+enum OpnameStatus {
+  DRAFT
+  REVIEW
+  POSTED
 }
 
 model StockOpnameItem {
@@ -283,4 +296,33 @@ enum BreakageCategory {
   RUSAK
   HILANG
   LAINNYA
+}
+
+enum AffiliateActivityType {
+  AFFILIATE
+  NON_AFFILIATE
+}
+
+model AffiliateActivity {
+  id              String                @id @default(cuid())
+  date            DateTime
+  activityType    AffiliateActivityType @default(AFFILIATE)
+  accountUsername String?
+  realName        String?
+  skuId           String
+  qty             Float
+  courier         String?
+  shippingCost    Float                 @default(0)
+  marketplace     String?
+  followers       String?
+  affiliateData   String?
+  notes           String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  sku SKU @relation(fields: [skuId], references: [id], onDelete: Cascade)
+
+  @@index([date])
+  @@index([skuId])
+  @@map("affiliate_activity")
 }

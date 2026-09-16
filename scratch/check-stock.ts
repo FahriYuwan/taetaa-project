@@ -11,19 +11,15 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const skus = await prisma.sKU.findMany({
-    where: { name: { contains: 'Sabun 20 Liter (Curah)' } },
-    include: {
-      inventory: true
-    }
+    include: { inventory: true },
+    orderBy: { code: 'asc' }
   });
 
   for (const sku of skus) {
-    console.log(`SKU: ${sku.code} - ${sku.name}`);
     const costHist = await prisma.sKUCostHistory.findUnique({ where: { skuId: sku.id } });
-    console.log(`Cost History Stock: ${costHist?.stock}`);
-    console.log(`Inventory Movement Sum: ${sku.inventory.reduce((sum, i) => sum + i.movement, 0)}`);
-    console.log('--- Movemements ---');
-    sku.inventory.forEach(i => console.log(`${i.date.toISOString()} | ${i.type} | ${i.movement} | ${i.reference}`));
+    const invStock = sku.inventory.reduce((sum, i) => sum + i.movement, 0);
+    const isRestock = (sku.stockMin ?? 0) > 0 && invStock < (sku.stockMin ?? 0);
+    console.log(`SKU: ${sku.code} | Type: ${sku.type} | Stock: ${invStock} (CH: ${costHist?.stock}) | Min: ${sku.stockMin} | Restock Alert: ${isRestock ? 'YES (KURANG ' + ((sku.stockMin ?? 0) - invStock) + ')' : 'NO'}`);
   }
 }
 

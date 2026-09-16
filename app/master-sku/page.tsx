@@ -15,6 +15,8 @@ interface SKU {
   type: 'RAW' | 'PRODUCT' | 'PACKAGE';
   hppPrice?: number;
   sellingPrice?: number;
+  stock?: number;
+  stockMin?: number | null;
   bomComponents?: any[];
 }
 
@@ -33,15 +35,12 @@ export default function MasterSKUPage() {
 
   useEffect(() => {
     fetchSkus();
-  }, [filter]);
+  }, []);
 
   async function fetchSkus() {
     try {
       setLoading(true);
-      const url = filter === 'all' 
-        ? '/api/skus' 
-        : `/api/skus?type=${filter}`;
-      const res = await fetch(url);
+      const res = await fetch('/api/skus');
       if (res.ok) {
         const data = await res.json();
         setSkus(data);
@@ -117,10 +116,13 @@ export default function MasterSKUPage() {
     }
   }
 
-  const filteredSkus = skus.filter(sku =>
-    sku.code.toLowerCase().includes(search.toLowerCase()) ||
-    sku.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredSkus = skus.filter(sku => {
+    const matchesFilter = filter === 'all' || sku.type === filter;
+    const matchesSearch =
+      sku.code.toLowerCase().includes(search.toLowerCase()) ||
+      sku.name.toLowerCase().includes(search.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
 
   const counts = {
     all: skus.length,
@@ -198,6 +200,7 @@ export default function MasterSKUPage() {
                     <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>SKU CODE</th>
                     <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>NAMA</th>
                     <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>TIPE</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>STOK MIN</th>
                     <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>HARGA HPP</th>
                     <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>HARGA JUAL</th>
                     <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>BOM</th>
@@ -205,46 +208,55 @@ export default function MasterSKUPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredSkus.map((sku) => (
-                    <tr key={sku.id} style={{ borderBottomColor: colors.neutral.border, borderBottomWidth: '1px' }}>
-                      <td className="px-6 py-4 text-sm" style={{ color: colors.neutral.textStrong }}>{sku.code}</td>
-                      <td className="px-6 py-4 text-sm" style={{ color: colors.neutral.textStrong }}>{sku.name}</td>
-                      <td className="px-6 py-4 text-center">
-                        <Badge type={sku.type}>{sku.type === 'PRODUCT' ? 'PRODUCT' : sku.type}</Badge>
-                      </td>
-                      <td className="px-6 py-4 text-right text-sm" style={{ color: colors.neutral.textStrong }}>
-                        {sku.hppPrice ? `Rp ${sku.hppPrice.toLocaleString('id-ID')}` : 'Rp 0'}
-                      </td>
-                      <td className="px-6 py-4 text-right text-sm" style={{ color: colors.neutral.textStrong }}>
-                        {sku.type === 'PACKAGE' && sku.sellingPrice ? `Rp ${sku.sellingPrice.toLocaleString('id-ID')}` : '—'}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {(sku.type === 'PRODUCT' || sku.type === 'PACKAGE') && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => setViewingSku(sku)}
+                  {filteredSkus.map((sku) => {
+                    const stockMin = sku.stockMin ?? 0;
+
+                    return (
+                      <tr key={sku.id} style={{ borderBottomColor: colors.neutral.border, borderBottomWidth: '1px' }}>
+                        <td className="px-6 py-4 text-sm font-medium" style={{ color: colors.neutral.textStrong }}>{sku.code}</td>
+                        <td className="px-6 py-4 text-sm" style={{ color: colors.neutral.textStrong }}>{sku.name}</td>
+                        <td className="px-6 py-4 text-center">
+                          <Badge type={sku.type}>{sku.type === 'PRODUCT' ? 'PRODUCT' : sku.type}</Badge>
+                        </td>
+                        <td className="px-6 py-4 text-right text-sm font-medium" style={{ color: colors.neutral.textMuted }}>
+                          {stockMin > 0 ? stockMin.toLocaleString('id-ID') : '—'}
+                        </td>
+                        <td className="px-6 py-4 text-right text-sm" style={{ color: colors.neutral.textStrong }}>
+                          {sku.hppPrice ? `Rp ${sku.hppPrice.toLocaleString('id-ID')}` : 'Rp 0'}
+                        </td>
+                        <td className="px-6 py-4 text-right text-sm" style={{ color: colors.neutral.textStrong }}>
+                          {sku.type === 'PACKAGE' && sku.sellingPrice ? `Rp ${sku.sellingPrice.toLocaleString('id-ID')}` : '—'}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          {(sku.type === 'PRODUCT' || sku.type === 'PACKAGE') && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => setViewingSku(sku)}
+                            >
+                              Lihat BOM
+                            </Button>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-right flex gap-2 justify-end">
+                          <button 
+                            className="text-lg hover:opacity-70"
+                            onClick={() => setEditingSku(sku)}
+                            title="Edit SKU"
                           >
-                            Lihat BOM
-                          </Button>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right flex gap-2 justify-end">
-                        <button 
-                          className="text-lg hover:opacity-70"
-                          onClick={() => setEditingSku(sku)}
-                        >
-                          ✏️
-                        </button>
-                        <button 
-                          className="text-lg hover:opacity-70"
-                          onClick={() => setDeletingSkuId(sku.id)}
-                        >
-                          🗑️
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                            ✏️
+                          </button>
+                          <button 
+                            className="text-lg hover:opacity-70"
+                            onClick={() => setDeletingSkuId(sku.id)}
+                            title="Hapus SKU"
+                          >
+                            🗑️
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
@@ -390,7 +402,20 @@ function BOMViewModal({ isOpen, sku, onClose }: { isOpen: boolean, sku: SKU | nu
                             <td className="px-4 py-3 font-mono text-xs font-bold text-gray-700">{item?.code}</td>
                             <td className="px-4 py-3 text-gray-600">{item?.name}</td>
                             <td className="px-4 py-3 text-right font-bold">
-                              {comp.quantity} <span className="text-[10px] text-gray-400 font-medium uppercase">{cat === 'RAW' ? 'ml' : 'pcs'}</span>
+                              {cat === 'RAW' ? (
+                                <div>
+                                  <span>{comp.quantity} unit</span>
+                                  {item?.productSize ? (
+                                    <span className="block text-[10px] text-gray-500 font-normal">
+                                      (~{(comp.quantity * item.productSize >= 1000)
+                                        ? `${((comp.quantity * item.productSize) / 1000).toLocaleString('id-ID', { maximumFractionDigits: 2 })} L`
+                                        : `${Math.round(comp.quantity * item.productSize).toLocaleString('id-ID')} ml`})
+                                    </span>
+                                  ) : null}
+                                </div>
+                              ) : (
+                                <span>{comp.quantity} <span className="text-[10px] text-gray-400 font-medium uppercase">pcs</span></span>
+                              )}
                             </td>
                             <td className="px-4 py-3 text-center">
                               <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${

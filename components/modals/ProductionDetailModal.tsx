@@ -19,6 +19,7 @@ interface ProductionDetail {
     inputSku: {
       code: string;
       name: string;
+      productSize?: number;
     }
   }>;
   notes: string | null;
@@ -73,8 +74,15 @@ export function ProductionDetailModal({
                     <span className="mx-2 text-gray-300">|</span>
                     <span className="text-gray-600">{input.inputSku.name}</span>
                   </div>
-                  <div className="font-bold">
-                    {input.qtyUsed.toLocaleString('id-ID')} unit
+                  <div className="font-bold text-right">
+                    <span>{input.qtyUsed.toLocaleString('id-ID', { maximumFractionDigits: 4 })} unit</span>
+                    {input.inputSku?.productSize ? (
+                      <span className="text-[11px] text-gray-500 font-medium block">
+                        (~{(input.qtyUsed * input.inputSku.productSize >= 1000)
+                          ? `${((input.qtyUsed * input.inputSku.productSize) / 1000).toLocaleString('id-ID', { maximumFractionDigits: 2 })} L`
+                          : `${Math.round(input.qtyUsed * input.inputSku.productSize).toLocaleString('id-ID')} ml`})
+                      </span>
+                    ) : null}
                   </div>
                 </div>
               ))}

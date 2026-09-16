@@ -24,6 +24,7 @@ interface Purchase {
 }
 
 export default function PembelianRawPage() {
+  const { showToast } = useToast();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);

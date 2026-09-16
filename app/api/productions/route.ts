@@ -57,6 +57,20 @@ export async function POST(req: Request) {
       let totalProductionCost = 0;
       const productionInputsData = [];
 
+      // Create Production records first
+      const productionOutput = await tx.productionOutput.create({
+        data: { skuId: outputSkuId }
+      });
+
+      const production = await tx.production.create({
+        data: {
+          date: new Date(date),
+          outputId: productionOutput.id,
+          outputQty,
+          notes,
+        }
+      });
+
       // A. Verify and consume components
       for (const bom of skuWithBom.bomComponents) {
         let qtyNeeded = 0;
@@ -105,7 +119,7 @@ export async function POST(req: Request) {
               skuId: bom.childSkuId!,
               movement: -qtyNeeded,
               type: MovementType.PRODUCTION,
-              reference: 'TEMP_PROD',
+              reference: production.id,
             }
           });
           await tx.sKUCostHistory.update({
@@ -113,6 +127,7 @@ export async function POST(req: Request) {
             data: { stock: { decrement: qtyNeeded } }
           });
           productionInputsData.push({
+            productionId: production.id,
             inputSkuId: bom.childSkuId!,
             qtyUsed: qtyNeeded
           });
@@ -122,27 +137,15 @@ export async function POST(req: Request) {
             where: { id: bom.childKemasanId! },
             data: { stock: { decrement: qtyNeeded } }
           });
-          // We don't have a movement table for Kemasan yet (per doc 08), 
-          // but the HPP calculation is updated above.
         }
       }
 
-      // D. Create Production records
-      const productionOutput = await tx.productionOutput.create({
-        data: { skuId: outputSkuId }
-      });
-
-      const production = await tx.production.create({
-        data: {
-          date: new Date(date),
-          outputId: productionOutput.id,
-          outputQty,
-          notes,
-          inputs: {
-            create: productionInputsData
-          }
-        }
-      });
+      // Save production inputs
+      if (productionInputsData.length > 0) {
+        await tx.productionInput.createMany({
+          data: productionInputsData
+        });
+      }
 
       // E. Record output addition (Inventory Movement)
       await tx.inventory.create({

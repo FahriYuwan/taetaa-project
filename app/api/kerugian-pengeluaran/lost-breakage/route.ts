@@ -77,7 +77,6 @@ export async function POST(req: Request) {
                 data: {
                     date: new Date(date),
                     skuId,
-                    qty: -qty, // Some parts of system use 'movement', let's check
                     movement: -qty,
                     type: MovementType.BREAKAGE,
                     reference: breakage.id,

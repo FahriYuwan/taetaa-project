@@ -82,7 +82,7 @@ export async function POST() {
       const unitPrice = sku.sellingPrice || 35000;
       const total = qty * unitPrice;
       const fee = Math.random() * 0.1 * total;
-      const channels = ['SHOPEE', 'TIKTOK', 'OFFLINE', 'AFFILIATE'];
+      const channels = ['SHOPEE', 'TIKTOK', 'OFFLINE'];
 
       await prisma.sale.create({
         data: {

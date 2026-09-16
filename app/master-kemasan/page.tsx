@@ -155,7 +155,7 @@ export default function MasterKemasanPage() {
                   <td className="px-6 py-4 text-sm font-bold text-gray-900">{item.code}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{item.name}</td>
                   <td className="px-6 py-4 text-center">
-                    <Badge type="RAW" style={{ backgroundColor: '#E5E7EB', color: '#374151' } as any}>{item.category}</Badge>
+                    <span className="px-2.5 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">{item.category}</span>
                   </td>
                   <td className="px-6 py-4 text-right text-sm">{item.stock.toLocaleString('id-ID')}</td>
                   <td className="px-6 py-4 text-right text-sm font-medium" style={{ color: colors.brand[500] }}>

@@ -18,10 +18,25 @@ export async function GET(req: Request) {
             childKemasan: true
           },
         },
+        inventory: true,
       },
     });
 
-    return NextResponse.json(skus);
+    const costHistories = await prisma.sKUCostHistory.findMany();
+    const costMap = new Map(costHistories.map(ch => [ch.skuId, ch]));
+
+    const result = skus.map(sku => {
+      const invStock = sku.inventory.reduce((sum, inv) => sum + inv.movement, 0);
+      const ch = costMap.get(sku.id);
+      const stock = ch !== undefined ? ch.stock : invStock;
+      const { inventory, ...rest } = sku;
+      return {
+        ...rest,
+        stock,
+      };
+    });
+
+    return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to fetch SKUs' },
@@ -42,6 +57,12 @@ export async function POST(req: Request) {
       );
     }
 
+    let stockMin: number | null = null;
+    if (body.stockMin !== undefined && body.stockMin !== null && body.stockMin !== '') {
+      stockMin = parseFloat(body.stockMin);
+      if (isNaN(stockMin)) stockMin = null;
+    }
+
     const sku = await prisma.$transaction(async (tx) => {
       const newSku = await tx.sKU.create({
         data: {
@@ -51,6 +72,7 @@ export async function POST(req: Request) {
           productSize: body.productSize || 0,
           hppPrice: body.hppPrice || 0,
           sellingPrice: type === 'PACKAGE' ? sellingPrice : null,
+          stockMin,
         },
       });
 

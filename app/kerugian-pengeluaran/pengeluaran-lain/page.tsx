@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/header/PageHeader';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/modals/ConfirmDialog';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
 import { FiDollarSign } from 'react-icons/fi';
@@ -21,6 +22,8 @@ export default function PengeluaranLainPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const { showToast } = useToast();
 
   const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -56,9 +59,48 @@ export default function PengeluaranLainPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
-      if (!res.ok) throw new Error('Gagal mencatat pengeluaran');
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Gagal mencatat pengeluaran');
+      }
       showToast({ message: 'Pengeluaran berhasil dicatat', type: 'success' });
       setShowAddModal(false);
+      fetchExpenses();
+    } catch (error: any) {
+      showToast({ message: error.message, type: 'error' });
+    }
+  }
+
+  async function handleEditExpense(id: string, formData: any) {
+    try {
+      const res = await fetch(`/api/expenses/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Gagal memperbarui pengeluaran');
+      }
+      showToast({ message: 'Pengeluaran berhasil diperbarui', type: 'success' });
+      setEditingExpense(null);
+      fetchExpenses();
+    } catch (error: any) {
+      showToast({ message: error.message, type: 'error' });
+    }
+  }
+
+  async function handleDeleteExpense(id: string) {
+    try {
+      const res = await fetch(`/api/expenses/${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Gagal menghapus pengeluaran');
+      }
+      showToast({ message: 'Pengeluaran berhasil dihapus', type: 'success' });
+      setDeleteConfirmId(null);
       fetchExpenses();
     } catch (error: any) {
       showToast({ message: error.message, type: 'error' });
@@ -116,13 +158,14 @@ export default function PengeluaranLainPage() {
                 <th className="px-6 py-4">PENERIMA</th>
                 <th className="px-6 py-4 text-right">JUMLAH (RP)</th>
                 <th className="px-6 py-4">KETERANGAN</th>
+                <th className="px-6 py-4 text-right">AKSI</th>
               </tr>
             </thead>
             <tbody className="divide-y" style={{ borderColor: colors.neutral.border }}>
               {loading ? (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-400">Loading...</td></tr>
+                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-400">Loading...</td></tr>
               ) : expenses.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-20 text-center text-gray-400 font-medium">Belum ada data.</td></tr>
+                <tr><td colSpan={6} className="px-6 py-20 text-center text-gray-400 font-medium">Belum ada data.</td></tr>
               ) : (
                 expenses.map((e) => (
                   <tr key={e.id} className="hover:bg-gray-50 transition-colors">
@@ -141,6 +184,24 @@ export default function PengeluaranLainPage() {
                       Rp {e.amount.toLocaleString('id-ID')}
                     </td>
                     <td className="px-6 py-4 text-gray-500 italic">{e.notes || '—'}</td>
+                    <td className="px-6 py-4 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setEditingExpense(e)}
+                        >
+                          ✏️ Edit
+                        </Button>
+                        <button
+                          onClick={() => setDeleteConfirmId(e.id)}
+                          className="px-3 py-1.5 rounded text-xs font-semibold border transition-colors text-red-600 border-red-200 hover:bg-red-50 hover:border-red-400"
+                          title="Hapus pengeluaran"
+                        >
+                          🗑️ Hapus
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -149,29 +210,64 @@ export default function PengeluaranLainPage() {
         </div>
       </div>
 
-      {showAddModal && (
-        <AddExpenseModal
-          onClose={() => setShowAddModal(false)}
-          onSubmit={handleAddExpense}
+      {(showAddModal || editingExpense) && (
+        <ExpenseModal
+          initialData={editingExpense}
+          onClose={() => {
+            setShowAddModal(false);
+            setEditingExpense(null);
+          }}
+          onSubmit={editingExpense ? (data: any) => handleEditExpense(editingExpense.id, data) : handleAddExpense}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={!!deleteConfirmId}
+        title="Hapus Pengeluaran"
+        message="Yakin ingin menghapus catatan pengeluaran ini? Aksi tidak bisa dibatalkan."
+        confirmText="Hapus"
+        cancelText="Batal"
+        variant="danger"
+        onConfirm={() => deleteConfirmId && handleDeleteExpense(deleteConfirmId)}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </div>
   );
 }
 
-function AddExpenseModal({ onClose, onSubmit }: any) {
+function ExpenseModal({ initialData, onClose, onSubmit }: any) {
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
-    category: 'BONUS',
-    recipient: '',
-    amount: 0,
-    notes: '',
+    date: initialData ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    category: initialData ? initialData.category : 'BONUS',
+    recipient: initialData ? initialData.recipient : '',
+    amount: initialData ? initialData.amount : 0,
+    notes: initialData?.notes || '',
   });
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!formData.recipient.trim()) {
+      alert('Nama penerima wajib diisi');
+      return;
+    }
+    if (formData.amount <= 0) {
+      alert('Jumlah (Rp) harus lebih besar dari 0');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      await onSubmit(formData);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
-        <h3 className="text-lg font-bold mb-4">Catat Pengeluaran Baru</h3>
+        <h3 className="text-lg font-bold mb-4">
+          {initialData ? 'Edit Pengeluaran' : 'Catat Pengeluaran Baru'}
+        </h3>
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tanggal</label>
@@ -223,8 +319,10 @@ function AddExpenseModal({ onClose, onSubmit }: any) {
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-3">
-          <Button variant="secondary" onClick={onClose}>Batal</Button>
-          <Button variant="primary" onClick={() => onSubmit(formData)}>Simpan</Button>
+          <Button variant="secondary" onClick={onClose} disabled={submitting}>Batal</Button>
+          <Button variant="primary" onClick={handleSubmit} disabled={submitting}>
+            {submitting ? 'Menyimpan...' : (initialData ? 'Simpan Perubahan' : 'Simpan')}
+          </Button>
         </div>
       </div>
     </div>

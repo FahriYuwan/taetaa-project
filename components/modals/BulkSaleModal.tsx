@@ -57,7 +57,7 @@ export function BulkSaleModal({ isOpen, onClose, onSuccess }: BulkSaleModalProps
           </div>
           <div>
             <p className="font-bold mb-1 uppercase">Pilihan Channel:</p>
-            <code>SHOPEE, TIKTOK, OFFLINE, AFFILIATE</code>
+            <code>SHOPEE, TIKTOK, OFFLINE</code>
           </div>
         </div>
 
