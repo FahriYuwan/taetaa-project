@@ -29,10 +29,12 @@ export async function GET(req: Request) {
       const invStock = sku.inventory.reduce((sum, inv) => sum + inv.movement, 0);
       const ch = costMap.get(sku.id);
       const stock = ch !== undefined ? ch.stock : invStock;
+      const avgCost = ch?.avgCost ?? sku.hppPrice ?? 0;
       const { inventory, ...rest } = sku;
       return {
         ...rest,
         stock,
+        avgCost,
       };
     });
 

@@ -189,6 +189,7 @@ export async function GET(request: Request) {
         inventoryProduct: inventoryByType['PRODUCT'] || 0,
         inventoryPackage: inventoryByType['PACKAGE'] || 0,
         totalPurchaseAmount,
+        totalFee
       },
       timeSeriesData,
       marketplaceData,

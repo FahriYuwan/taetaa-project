@@ -22,9 +22,18 @@ export async function GET(req: Request) {
           include: { sku: true },
           orderBy: { date: 'asc' }
         });
-        csvContent = "Tanggal,Marketplace,Order ID,SKU,Nama,Qty,Harga,Gross,Biaya,Net Revenue\n";
+        const costHistories = await prisma.sKUCostHistory.findMany();
+        const costMap = new Map(costHistories.map(ch => [ch.skuId, ch.avgCost]));
+
+        csvContent = "Tanggal,Marketplace,Order ID,SKU,Nama,Qty,Harga,Gross,Biaya,Net Revenue,HPP,Laba\n";
         sales.forEach(s => {
-          csvContent += `${s.date.toISOString().split('T')[0]},${s.channel},${s.orderId || ""},${s.sku.code},${s.sku.name},${s.qty},${s.unitPrice},${s.total},${s.fee},${s.netRevenue}\n`;
+          const gross = s.total || (s.qty * s.unitPrice);
+          const fee = s.fee || 0;
+          const netRevenue = s.netRevenue !== undefined && s.netRevenue !== null ? s.netRevenue : (gross - fee);
+          const avgCost = costMap.get(s.skuId) ?? s.sku?.hppPrice ?? 0;
+          const hpp = s.qty * avgCost;
+          const laba = netRevenue - hpp;
+          csvContent += `${s.date.toISOString().split('T')[0]},${s.channel},${s.orderId || ""},${s.sku.code},"${s.sku.name}",${s.qty},${s.unitPrice},${gross},${fee},${netRevenue},${hpp},${laba}\n`;
         });
         break;
       }

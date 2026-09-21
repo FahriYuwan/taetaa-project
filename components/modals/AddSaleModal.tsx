@@ -75,11 +75,11 @@ export function AddSaleModal({
   if (!isOpen) return null;
 
   const gross = formData.qty * formData.unitPrice;
-  const netRevenue = gross - formData.fee;
-
-  // Note: We don't have current avgCost in the SKU list easily without another fetch or update to the API
-  // In a real app, I'd include it in the SKU data.
-  // For UI preview, let's assume it's there or just show revenue.
+  const fee = formData.fee || 0;
+  const netRevenue = gross - fee;
+  const avgCost = selectedSku?.avgCost ?? selectedSku?.hppPrice ?? 0;
+  const hpp = formData.qty * avgCost;
+  const laba = netRevenue - hpp;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -87,6 +87,11 @@ export function AddSaleModal({
 
     if (!formData.skuId || formData.qty <= 0 || formData.unitPrice <= 0) {
       setError('Harap isi SKU, Qty, dan Harga dengan benar');
+      return;
+    }
+
+    if (selectedSku && selectedSku.stock !== undefined && formData.qty > selectedSku.stock) {
+      setError(`Stok tidak cukup (Tersedia: ${selectedSku.stock}, Diminta: ${formData.qty})`);
       return;
     }
 
@@ -144,6 +149,7 @@ export function AddSaleModal({
                 <option value="SHOPEE">Shopee</option>
                 <option value="TIKTOK">TikTok Shop</option>
                 <option value="OFFLINE">Offline / Toko</option>
+                <option value="AFFILIATE">Affiliate</option>
               </select>
             </div>
 
@@ -180,6 +186,18 @@ export function AddSaleModal({
                   <option key={sku.id} value={sku.id}>{sku.code} - {sku.name}</option>
                 ))}
               </select>
+              {selectedSku && (
+                <div className="text-[11px] mt-1 flex justify-between px-1">
+                  <span className="text-gray-500">
+                    Stok: <strong className={(selectedSku.stock ?? 0) < (formData.qty || 1) ? 'text-red-500' : 'text-green-600'}>
+                      {(selectedSku.stock ?? 0).toLocaleString('id-ID')} unit
+                    </strong>
+                  </span>
+                  <span className="text-gray-500">
+                    Avg Cost: <strong>Rp {avgCost.toLocaleString('id-ID')}</strong>
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -231,19 +249,32 @@ export function AddSaleModal({
               />
             </div>
 
-            <div className="mt-6 space-y-3 p-4 rounded-lg bg-gray-50 border border-dashed" style={{ borderColor: colors.neutral.border }}>
+            <div className="mt-4 space-y-2.5 p-4 rounded-lg bg-gray-50 border border-dashed" style={{ borderColor: colors.neutral.border }}>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-gray-500 font-bold uppercase">Gross Revenue</span>
                 <span className="font-bold">Rp {gross.toLocaleString('id-ID')}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-gray-500 font-bold uppercase">Total Biaya</span>
-                <span className="text-red-500">- Rp {formData.fee.toLocaleString('id-ID')}</span>
+                <span className="text-red-500 font-medium">- Rp {fee.toLocaleString('id-ID')}</span>
+              </div>
+              <div className="pt-2 border-t flex justify-between items-center text-xs" style={{ borderColor: colors.neutral.border }}>
+                <span className="text-gray-700 font-bold uppercase">Net Revenue</span>
+                <span className="font-bold" style={{ color: colors.brand[500] }}>
+                  Rp {netRevenue.toLocaleString('id-ID')}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-gray-500 font-bold uppercase">Total HPP</span>
+                <span className="text-orange-600 font-medium">- Rp {hpp.toLocaleString('id-ID')}</span>
               </div>
               <div className="pt-2 border-t flex justify-between items-center" style={{ borderColor: colors.neutral.border }}>
-                <span className="text-sm font-bold uppercase text-gray-700">Net Revenue</span>
-                <span className="text-xl font-bold" style={{ color: colors.brand[500] }}>
-                  Rp {netRevenue.toLocaleString('id-ID')}
+                <div>
+                  <span className="text-sm font-bold uppercase text-gray-800 block">Estimasi Laba</span>
+                  <span className="text-[10px] text-gray-400">Net Revenue − HPP</span>
+                </div>
+                <span className={`text-xl font-bold ${laba >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                  Rp {laba.toLocaleString('id-ID')}
                 </span>
               </div>
             </div>

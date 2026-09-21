@@ -23,6 +23,7 @@ interface DashboardData {
     inventoryProduct: number;
     inventoryPackage: number;
     totalPurchaseAmount: number;
+    totalFee: number;
   };
   timeSeriesData: Array<{
     date: string;
@@ -269,7 +270,7 @@ export default function DashboardPage() {
                 label="PENDAPATAN BERSIH"
                 value={`Rp ${data.kpi.netRevenue.toLocaleString('id-ID')}`}
                 valueColor={colors.brand[500]}
-                description={`Gross: Rp ${(data.kpi.netRevenue + data.kpi.totalHPP).toLocaleString('id-ID')} · Fee: Rp ${(data.kpi.netRevenue + data.kpi.totalHPP - data.kpi.netRevenue).toLocaleString('id-ID')}`}
+                description={`Gross: Rp ${(data.kpi.netRevenue + data.kpi.totalFee).toLocaleString('id-ID')} · Fee: Rp ${(data.kpi.totalFee).toLocaleString('id-ID')}`}
               />
               <KPICard
                 label="TOTAL HPP (COGS)"
@@ -301,25 +302,25 @@ export default function DashboardPage() {
               }}
             >
               <KPICard
-                label="NILAI INVENTORY RAW"
+                label="TOTAL HARGA BARANG [RAW]"
                 value={`Rp ${data.kpi.inventoryRaw.toLocaleString('id-ID')}`}
                 valueColor={colors.neutral.textStrong}
                 description="—"
               />
               <KPICard
-                label="NILAI INVENTORY PRODUCT"
+                label="TOTAL HARGA BARANG [PRODUCT]"
                 value={`Rp ${data.kpi.inventoryProduct.toLocaleString('id-ID')}`}
                 valueColor={colors.neutral.textStrong}
                 description="—"
               />
               <KPICard
-                label="NILAI INVENTORY PACKAGE"
+                label="TOTAL HARGA BARANG [PACKAGE]"
                 value={`Rp ${data.kpi.inventoryPackage.toLocaleString('id-ID')}`}
                 valueColor={colors.neutral.textStrong}
                 description="—"
               />
               <KPICard
-                label="TOTAL PEMBELIAN RAW"
+                label="Total Pembelian Barang [RAW]"
                 value={`Rp ${data.kpi.totalPurchaseAmount.toLocaleString('id-ID')}`}
                 valueColor={colors.neutral.textStrong}
                 description="Periode dipilih"

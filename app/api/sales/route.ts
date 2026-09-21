@@ -28,6 +28,7 @@ export async function GET(req: Request) {
       include: { 
         sku: {
           select: {
+            id: true,
             code: true,
             name: true,
             hppPrice: true,
@@ -36,7 +37,30 @@ export async function GET(req: Request) {
       },
       orderBy: { date: 'desc' },
     });
-    return NextResponse.json(sales);
+
+    const costHistories = await prisma.sKUCostHistory.findMany();
+    const costMap = new Map(costHistories.map(ch => [ch.skuId, ch.avgCost]));
+
+    const formatted = sales.map((sale) => {
+      const unitPrice = sale.unitPrice || 0;
+      const total = sale.total || (sale.qty * unitPrice);
+      const fee = sale.fee || 0;
+      const netRevenue = sale.netRevenue !== undefined && sale.netRevenue !== null ? sale.netRevenue : (total - fee);
+      const avgCost = costMap.get(sale.skuId) ?? sale.sku?.hppPrice ?? 0;
+      const hpp = sale.qty * avgCost;
+      const laba = netRevenue - hpp;
+
+      return {
+        ...sale,
+        total,
+        netRevenue,
+        avgCost,
+        hpp,
+        laba,
+      };
+    });
+
+    return NextResponse.json(formatted);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch sales' }, { status: 500 });
   }

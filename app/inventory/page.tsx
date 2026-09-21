@@ -6,12 +6,12 @@ import { KPICard } from '@/components/dashboard/KPICard';
 import { Button, Badge } from '@/components/ui/Button';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
-import { 
-  FiPackage, 
-  FiActivity, 
-  FiTrendingUp, 
-  FiTrendingDown, 
-  FiAlertCircle, 
+import {
+  FiPackage,
+  FiActivity,
+  FiTrendingUp,
+  FiTrendingDown,
+  FiAlertCircle,
   FiDatabase,
   FiInfo
 } from 'react-icons/fi';
@@ -86,7 +86,7 @@ export default function InventoryDashboardPage() {
 
   const filteredItems = data?.items.filter(item => {
     const matchesSearch = item.code.toLowerCase().includes(search.toLowerCase()) ||
-                         item.name.toLowerCase().includes(search.toLowerCase());
+      item.name.toLowerCase().includes(search.toLowerCase());
     if (!matchesSearch) return false;
 
     if (typeFilter === 'RESTOCK') {
@@ -137,7 +137,7 @@ export default function InventoryDashboardPage() {
                 />
               </div>
             </div>
-            
+
             <div className="space-y-1 border-l pl-4 ml-2">
               <label className="text-[10px] font-bold text-gray-400 uppercase">Pencarian</label>
               <input
@@ -157,7 +157,7 @@ export default function InventoryDashboardPage() {
         <div className="grid grid-cols-4 gap-6">
           <div className="col-span-2">
             <KPICard
-              label="Nilai Total Inventory"
+              label="TOTAL HARGA SEMUA BARANG"
               value={`Rp ${(data?.kpi.totalValue || 0).toLocaleString('id-ID')}`}
               description="Total akumulasi nilai stock akhir dari seluruh kategori SKU (Raw, Product, Package)."
               valueColor={colors.brand[500]}
@@ -165,13 +165,13 @@ export default function InventoryDashboardPage() {
             />
           </div>
           <KPICard
-            label="Raw Material Value"
+            label="TOTAL HARGA BARANG [RAW]"
             value={`Rp ${(data?.kpi.raw.value || 0).toLocaleString('id-ID')}`}
             description={`${data?.kpi.raw.count || 0} SKU Bahan Baku`}
             icon={<FiPackage size={20} />}
           />
           <KPICard
-            label="Product & Package Value"
+            label="TOTAL HARGA BARANG [PRODUCT & PACKAGE]"
             value={`Rp ${((data?.kpi.product.value || 0) + (data?.kpi.package.value || 0)).toLocaleString('id-ID')}`}
             description={`${(data?.kpi.product.count || 0) + (data?.kpi.package.count || 0)} SKU Barang Jadi/Kemas`}
             icon={<FiActivity size={20} />}
@@ -240,8 +240,8 @@ export default function InventoryDashboardPage() {
                   }}
                 >
                   <span>{index + 1}. {item.name}</span>
-                  <span style={{ 
-                    fontWeight: '700', 
+                  <span style={{
+                    fontWeight: '700',
                     fontSize: '12px',
                     color: item.stockAkhir <= 0 ? colors.semantic.red : 'inherit'
                   }}>
@@ -268,11 +268,10 @@ export default function InventoryDashboardPage() {
               <button
                 key={tab.id}
                 onClick={() => setTypeFilter(tab.id as any)}
-                className={`px-6 py-3 text-sm font-bold transition-all border-b-2 flex items-center gap-1.5 ${
-                  typeFilter === tab.id
-                    ? (tab.id === 'RESTOCK' ? 'bg-white border-red-500 text-red-600' : 'bg-white border-blue-500 text-blue-600')
-                    : (tab.id === 'RESTOCK' ? 'border-transparent text-red-500/80 hover:text-red-600' : 'border-transparent text-gray-400 hover:text-gray-600')
-                }`}
+                className={`px-6 py-3 text-sm font-bold transition-all border-b-2 flex items-center gap-1.5 ${typeFilter === tab.id
+                  ? (tab.id === 'RESTOCK' ? 'bg-white border-red-500 text-red-600' : 'bg-white border-blue-500 text-blue-600')
+                  : (tab.id === 'RESTOCK' ? 'border-transparent text-red-500/80 hover:text-red-600' : 'border-transparent text-gray-400 hover:text-gray-600')
+                  }`}
               >
                 <span>{tab.label}</span>
               </button>
@@ -336,7 +335,7 @@ export default function InventoryDashboardPage() {
                           return (
                             <div className="flex items-center justify-end gap-1 font-bold">
                               {item.type === 'RAW' && item.rawBreakdown && item.rawBreakdown.length > 0 && (
-                                <button 
+                                <button
                                   onClick={() => setViewingBreakdown(item)}
                                   className="text-blue-400 hover:text-blue-600 p-1"
                                   title="Lihat Breakdown Pemakaian"
@@ -345,7 +344,7 @@ export default function InventoryDashboardPage() {
                                 </button>
                               )}
                               {isRestockNeeded ? (
-                                <div 
+                                <div
                                   className="inline-flex items-center gap-1 cursor-help"
                                   style={{ color: colors.semantic.red }}
                                   title={`Stok saat ini: ${item.stockAkhir} — Stok Minimum: ${stockMin} — Kurang: ${kurang} unit`}
@@ -376,9 +375,9 @@ export default function InventoryDashboardPage() {
       </div>
 
       {viewingBreakdown && (
-        <RawUsageModal 
-          item={viewingBreakdown} 
-          onClose={() => setViewingBreakdown(null)} 
+        <RawUsageModal
+          item={viewingBreakdown}
+          onClose={() => setViewingBreakdown(null)}
         />
       )}
     </div>
