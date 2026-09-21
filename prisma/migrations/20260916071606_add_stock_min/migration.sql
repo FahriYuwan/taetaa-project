@@ -10,8 +10,6 @@ ALTER TYPE "MovementType" ADD VALUE 'AFFILIATE_SEEDING';
 -- AlterTable
 ALTER TABLE "SKU" ADD COLUMN     "stockMin" DOUBLE PRECISION DEFAULT 0;
 
--- AlterTable
-ALTER TABLE "StockOpname" ALTER COLUMN "updatedAt" DROP DEFAULT;
 
 -- CreateTable
 CREATE TABLE "Breakage" (
