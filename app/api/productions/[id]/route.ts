@@ -215,13 +215,21 @@ export async function PUT(
         });
       }
 
-      // Update the production record itself
+      // Update the production record itself while preserving any [MANUAL_CONSUMPTIONS:...] tag
+      let finalNotes = notes?.trim() || null;
+      const tagMatch = production.notes?.match(/\[MANUAL_CONSUMPTIONS:.*?\]/);
+      if (tagMatch && finalNotes && !finalNotes.includes('[MANUAL_CONSUMPTIONS:')) {
+        finalNotes = `${finalNotes}\n${tagMatch[0]}`;
+      } else if (tagMatch && !finalNotes) {
+        finalNotes = tagMatch[0];
+      }
+
       const updatedProd = await tx.production.update({
         where: { id },
         data: {
           date: prodDate,
           outputQty: parsedQty,
-          notes: notes?.trim() || null,
+          notes: finalNotes,
         },
         include: {
           output: { include: { sku: true } },

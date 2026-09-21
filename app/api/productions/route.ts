@@ -7,7 +7,15 @@ export async function GET(req: Request) {
     const productions = await prisma.production.findMany({
       include: {
         output: {
-          include: { sku: true }
+          include: {
+            sku: {
+              include: {
+                bomComponents: {
+                  include: { childSku: true, childKemasan: true }
+                }
+              }
+            }
+          }
         },
         inputs: {
           include: { inputSku: true }
@@ -62,12 +70,32 @@ export async function POST(req: Request) {
         data: { skuId: outputSkuId }
       });
 
+      // Build manual consumptions map for persistence
+      const manualConsumptionsMap: Record<string, boolean> = {};
+      for (const bom of skuWithBom.bomComponents) {
+        if (bom.consumptionType === 'MANUAL') {
+          const isChecked = !!(
+            (bom.childKemasanId && manualConsumptions?.[bom.childKemasanId]) ||
+            (bom.childKemasan?.code && manualConsumptions?.[bom.childKemasan.code]) ||
+            (bom.id && manualConsumptions?.[bom.id])
+          );
+          if (bom.childKemasanId) manualConsumptionsMap[bom.childKemasanId] = isChecked;
+          if (bom.childKemasan?.code) manualConsumptionsMap[bom.childKemasan.code] = isChecked;
+        }
+      }
+
+      let taggedNotes = notes ? notes.trim() : '';
+      if (Object.keys(manualConsumptionsMap).length > 0) {
+        const tag = `[MANUAL_CONSUMPTIONS:${JSON.stringify(manualConsumptionsMap)}]`;
+        taggedNotes = taggedNotes ? `${taggedNotes}\n${tag}` : tag;
+      }
+
       const production = await tx.production.create({
         data: {
           date: new Date(date),
           outputId: productionOutput.id,
           outputQty,
-          notes,
+          notes: taggedNotes || null,
         }
       });
 
@@ -81,7 +109,11 @@ export async function POST(req: Request) {
         const isManual = bom.consumptionType === 'MANUAL';
         
         if (isManual) {
-          const isConsumed = manualConsumptions?.[bom.childKemasanId!];
+          const isConsumed = !!(
+            manualConsumptionsMap[bom.childKemasanId!] ??
+            (bom.childKemasan?.code && manualConsumptionsMap[bom.childKemasan.code]) ??
+            manualConsumptions?.[bom.childKemasanId!]
+          );
           if (!isConsumed) continue; // Skip if not checked
           qtyNeeded = 1; // Manual consumption is always 1 pcs
         } else {

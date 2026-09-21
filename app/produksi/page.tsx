@@ -19,15 +19,18 @@ interface Production {
       id: string;
       code: string;
       name: string;
-    }
+      bomComponents?: any[];
+    };
   };
   inputs: Array<{
     id: string;
     qtyUsed: number;
     inputSku: {
+      id?: string;
       code: string;
       name: string;
-    }
+      productSize?: number;
+    };
   }>;
   notes: string | null;
 }

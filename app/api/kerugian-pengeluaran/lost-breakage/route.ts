@@ -83,10 +83,10 @@ export async function POST(req: Request) {
                 },
             });
 
-            const costHistory = await tx.sKUCostHistory.findUnique({
+            const currentStockRecord = await tx.sKUCostHistory.findUnique({
                 where: { skuId },
             });
-            if (costHistory) {
+            if (currentStockRecord) {
                 await tx.sKUCostHistory.update({
                     where: { skuId },
                     data: {
