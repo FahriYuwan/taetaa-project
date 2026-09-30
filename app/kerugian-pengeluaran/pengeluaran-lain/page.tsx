@@ -138,7 +138,7 @@ export default function PengeluaranLainPage() {
         }
       />
 
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className="flex-1 overflow-auto p-4 md:p-6 space-y-4 md:space-y-6">
         <div className="max-w-sm">
           <KPICard
             label="TOTAL PENGELUARAN"

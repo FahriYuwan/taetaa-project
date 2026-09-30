@@ -520,7 +520,7 @@ export default function StockOpnamePage() {
       </div>
 
       {activeTab === 'new' ? (
-        <div className="flex-1 overflow-auto p-6 space-y-4">
+        <div className="flex-1 overflow-auto p-4 md:p-6 space-y-4">
           {/* Active Draft Banner */}
           {currentDraftId && (
             <div className="p-3.5 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-between">

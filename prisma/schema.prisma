@@ -169,31 +169,54 @@ model ProductionInput {
 }
 
 model Sale {
-  id         String   @id @default(cuid())
-  date       DateTime
-  skuId      String
-  qty        Float
-  unitPrice  Float
-  total      Float    @default(0)
-  channel    Channel // SHOPEE, TIKTOK, OFFLINE, AFFILIATE
-  orderId    String?
-  fee        Float    @default(0) // marketplace fee
-  netRevenue Float    @default(0) // total - fee
-  notes      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id              String     @id @default(cuid())
+  date            DateTime
+  skuId           String
+  qty             Float
+  unitPrice       Float      @default(0)
+  total           Float      @default(0)
+  channel         Channel
+  orderId         String?    // Nomor Pesanan Marketplace (Order Code)
+  resi            String?    // Nomor Resi Pengiriman Ekspedisi (Tracking Number)
+  fee             Float      @default(0) // total marketplace fee (legacy/manual)
+  netRevenue      Float      @default(0)
+  notes           String?
+  // Finance detail fields (from bulk paste)
+  voucher         Float      @default(0)
+  discount        Float      @default(0)
+  platformFee     Float      @default(0)
+  shippingFee     Float      @default(0)
+  omset           Float      @default(0)
+  hpp             Float      @default(0) // HPP snapshot (from bulk paste or hppPrice * qty)
+  totalHpp        Float      @default(0)
+  laba            Float      @default(0)
+  // Scanner / logistic fields
+  status          SaleStatus @default(TERKIRIM)
+  scannedByLogistic Boolean  @default(false)
+  financeMatched  Boolean    @default(false) // has been matched with bulk paste
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
   sku SKU @relation(fields: [skuId], references: [id], onDelete: Cascade)
 
   @@index([date])
   @@index([skuId])
+  @@index([orderId])
+  @@index([resi])
 }
 
 enum Channel {
   SHOPEE
   TIKTOK
+  TOKOPEDIA
   OFFLINE
   AFFILIATE
+}
+
+enum SaleStatus {
+  TERKIRIM
+  DIRETURN
+  DIBATALKAN
 }
 
 model Marketing {

@@ -118,11 +118,12 @@ export default function DashboardPage() {
         style={{
           backgroundColor: colors.neutral.bg,
           borderBottom: `1px solid ${colors.neutral.border}`,
-          padding: '24px',
+          padding: 'clamp(16px, 4vw, 24px)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-start',
-          gap: '24px',
+          flexWrap: 'wrap',
+          gap: '16px',
         }}
       >
         <div>
@@ -241,7 +242,7 @@ export default function DashboardPage() {
         style={{
           flex: 1,
           backgroundColor: colors.neutral.bg,
-          padding: '24px',
+          padding: 'clamp(16px, 4vw, 24px)',
           overflowY: 'auto',
         }}
       >
@@ -330,8 +331,8 @@ export default function DashboardPage() {
             {/* Charts Row 1: Time Series + Inventory Donut */}
             <div
               style={{
-                display: 'grid',
-                gridTemplateColumns: '2fr 1fr',
+              display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
                 gap: '16px',
                 marginBottom: '24px',
               }}
@@ -343,8 +344,8 @@ export default function DashboardPage() {
             {/* Charts Row 2: Marketplace + Top 10 */}
             <div
               style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
+              display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
                 gap: '16px',
               }}
             >

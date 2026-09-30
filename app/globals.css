@@ -8,3 +8,34 @@
   --brand-400: #4FC3F7;
   --brand-700: #1257A6;
 }
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Mobile: prevent horizontal overflow at page level */
+body {
+  overflow-x: hidden;
+}
+
+/* Table: ensure horizontal scroll on small screens */
+.table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* KPI grid responsive override */
+@media (max-width: 768px) {
+  .kpi-grid-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .kpi-span-2 {
+    grid-column: span 2 !important;
+  }
+}
+
+/* Tap highlight removal for mobile nav */
+a, button {
+  -webkit-tap-highlight-color: transparent;
+}

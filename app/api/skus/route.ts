@@ -6,10 +6,15 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type');
+    const code = searchParams.get('code');
 
-    const where = type && type !== 'all' ? { type: type as SKUType } : {};
+    const where: any = {};
+    if (type && type !== 'all') where.type = type as SKUType;
+    if (code) where.code = code.toUpperCase();
+
     const skus = await prisma.sKU.findMany({
       where,
+
       orderBy: { code: 'asc' },
       include: {
         bomComponents: {
