@@ -104,7 +104,7 @@ export function TimeSeriesChart({ data }: TimeSeriesChartProps) {
             <Line
               type="monotone"
               dataKey="profit"
-              stroke={colors.semantic.red}
+              stroke={colors.semantic.green}
               name="Laba"
               strokeWidth={2}
               dot={false}

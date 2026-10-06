@@ -13,17 +13,24 @@ import { colors } from '@/lib/theme';
 
 interface DashboardData {
   kpi: {
+    totalGross: number;
+    totalFee: number;
     netRevenue: number;
     totalHPP: number;
+    grossProfit: number;
+    totalExpenses: number;
+    totalBreakage: number;
+    returnLoss: number;
+    totalOtherLosses: number;
     netProfit: number;
     profitMargin: number;
     totalOrders: number;
+    totalQtySold: number;
     avgOrderValue: number;
     inventoryRaw: number;
     inventoryProduct: number;
     inventoryPackage: number;
     totalPurchaseAmount: number;
-    totalFee: number;
   };
   timeSeriesData: Array<{
     date: string;
@@ -271,25 +278,29 @@ export default function DashboardPage() {
                 label="PENDAPATAN BERSIH"
                 value={`Rp ${data.kpi.netRevenue.toLocaleString('id-ID')}`}
                 valueColor={colors.brand[500]}
-                description={`Gross: Rp ${(data.kpi.netRevenue + data.kpi.totalFee).toLocaleString('id-ID')} · Fee: Rp ${(data.kpi.totalFee).toLocaleString('id-ID')}`}
+                description={`Gross: Rp ${data.kpi.totalGross.toLocaleString('id-ID')} · Fee: Rp ${data.kpi.totalFee.toLocaleString('id-ID')}`}
               />
               <KPICard
                 label="TOTAL HPP (COGS)"
                 value={`Rp ${data.kpi.totalHPP.toLocaleString('id-ID')}`}
                 valueColor={colors.semantic.orange}
-                description={`Qty terjual: ${data.timeSeriesData.reduce((sum, d) => sum + (d.revenue ? 1 : 0), 0)}`}
+                description={`Qty terjual: ${data.kpi.totalQtySold.toLocaleString('id-ID')} pcs`}
               />
               <KPICard
                 label="LABA BERSIH"
                 value={`Rp ${data.kpi.netProfit.toLocaleString('id-ID')}`}
                 valueColor={data.kpi.netProfit >= 0 ? colors.semantic.green : colors.semantic.red}
-                description={`${data.kpi.profitMargin}% margin`}
+                description={
+                  data.kpi.totalOtherLosses > 0
+                    ? `Laba Penjualan: Rp ${data.kpi.grossProfit.toLocaleString('id-ID')} · Beban/Rugi: Rp ${data.kpi.totalOtherLosses.toLocaleString('id-ID')}`
+                    : `${data.kpi.profitMargin}% margin laba bersih`
+                }
               />
               <KPICard
                 label="TOTAL ORDER"
                 value={`${data.kpi.totalOrders}`}
                 valueColor={colors.neutral.textStrong}
-                description={`Avg: Rp ${data.kpi.avgOrderValue.toLocaleString('id-ID')}`}
+                description={`Avg: Rp ${data.kpi.avgOrderValue.toLocaleString('id-ID')} / order`}
               />
             </div>
 

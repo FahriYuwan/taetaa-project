@@ -14,89 +14,128 @@ export async function GET(request: Request) {
     const to = new Date(toDate);
     to.setHours(23, 59, 59, 999);
 
-    // Get all sales within date range
-    const sales = await prisma.sale.findMany({
-      where: {
-        date: {
-          gte: from,
-          lte: to,
+    // Fetch data in parallel for performance
+    const [sales, purchases, inventory, costHistories, expenses, breakages] = await Promise.all([
+      prisma.sale.findMany({
+        where: {
+          date: {
+            gte: from,
+            lte: to,
+          },
         },
-      },
-      include: {
-        sku: true,
-      },
-    });
-
-    // Get all purchases within date range
-    const purchases = await prisma.purchase.findMany({
-      where: {
-        date: {
-          gte: from,
-          lte: to,
+        include: {
+          sku: true,
         },
-      },
-      include: {
-        sku: true,
-      },
-    });
+      }),
+      prisma.purchase.findMany({
+        where: {
+          date: {
+            gte: from,
+            lte: to,
+          },
+        },
+        include: {
+          sku: true,
+        },
+      }),
+      prisma.inventory.findMany({
+        include: {
+          sku: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.sKUCostHistory.findMany(),
+      prisma.otherExpense.findMany({
+        where: {
+          date: {
+            gte: from,
+            lte: to,
+          },
+        },
+      }),
+      prisma.breakage.findMany({
+        where: {
+          date: {
+            gte: from,
+            lte: to,
+          },
+        },
+      }),
+    ]);
 
-    // Get current inventory snapshot
-    const inventory = await prisma.inventory.findMany({
-      include: {
-        sku: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const costMap = new Map(costHistories.map((ch) => [ch.skuId, ch.avgCost]));
 
-    // Calculate KPIs from sales
-    const totalGross = sales.reduce((sum: number, sale) => sum + (sale.total || 0), 0);
-    const totalFee = sales.reduce((sum: number, sale) => sum + (sale.fee || 0), 0);
-    const netRevenue = totalGross - totalFee;
+    // Sales Aggregations
+    let totalGross = 0;
+    let totalFee = 0;
+    let netRevenue = 0;
+    let totalHPP = 0;
+    let totalQtySold = 0;
+    let returnLoss = 0;
+    const uniqueOrders = new Set<string>();
 
-    // Fetch cost history for all SKUs
-    const costHistories = await prisma.sKUCostHistory.findMany();
-    const costMap = new Map(costHistories.map(ch => [ch.skuId, ch.avgCost]));
+    const dateMap = new Map<string, { date: string; revenue: number; hpp: number; profit: number }>();
+    const marketplaceMap = new Map<string, number>();
+    const skuProfitMap = new Map<string, { skuCode: string; quantity: number; revenue: number; profit: number }>();
 
-    // Accurate HPP calculation using weighted average from SKUCostHistory
-    const totalHPP = sales.reduce((sum: number, sale) => {
-      const avgCost = costMap.get(sale.skuId) || 0;
-      const hpp = sale.qty * avgCost;
-      return sum + hpp;
-    }, 0);
-
-    const netProfit = netRevenue - totalHPP;
-    const profitMargin =
-      netRevenue > 0 ? Math.round((netProfit / netRevenue) * 100) : 0;
-    const totalOrders = sales.length;
-    const avgOrderValue = totalOrders > 0 ? Math.round(netRevenue / totalOrders) : 0;
-
-    // Inventory values by type (aggregate by SKU type and latest movement)
-    const skuInventories = new Map<string, { quantity: number; sku: any }>();
-    inventory.forEach((inv) => {
-      if (!skuInventories.has(inv.skuId)) {
-        skuInventories.set(inv.skuId, { quantity: 0, sku: inv.sku });
-      }
-      const entry = skuInventories.get(inv.skuId)!;
-      entry.quantity += inv.movement;
-    });
-
-    const inventoryByType: Record<string, number> = {};
-    skuInventories.forEach(({ quantity, sku }) => {
-      const type = sku.type;
-      const avgCost = costMap.get(sku.id) || 0;
-      const value = Math.max(0, quantity) * avgCost;
-      if (!inventoryByType[type]) inventoryByType[type] = 0;
-      inventoryByType[type] += value;
-    });
-
-    const totalPurchaseAmount = purchases.reduce(
-      (sum: number, purchase) => sum + (purchase.total || 0),
-      0
-    );
-
-    // Time series data (daily aggregation)
-    const dateMap = new Map<string, any>();
     sales.forEach((sale) => {
+      const fee = sale.fee || ((sale.platformFee || 0) + (sale.shippingFee || 0));
+      const avgCost = costMap.get(sale.skuId) ?? sale.sku?.hppPrice ?? 0;
+
+      // Handle Cancelled orders
+      if (sale.status === 'DIBATALKAN') {
+        // Order batal: Tidak ada omset & HPP karena pesanan dibatalkan sebelum terselesaikan
+        // Biaya non-refundable (jika ada pinalti/fee) diperhitungkan sebagai rugi
+        if (fee > 0) returnLoss += fee;
+        return;
+      }
+
+      // Handle Returned orders
+      if (sale.status === 'DIRETURN') {
+        // Order direturn: Produk dikembalikan ke gudang (stok direstore, HPP bersih = 0)
+        // Pembeli direfund sehingga omset = 0.
+        // Biaya ongkir retur / fee marketplace yang tidak dapat dikembalikan diperhitungkan sebagai kerugian retur
+        const lossFromFee = fee > 0 ? fee : (sale.shippingFee || 0);
+        if (sale.omset < 0) {
+          returnLoss += Math.abs(sale.omset);
+        } else {
+          returnLoss += lossFromFee;
+        }
+        return;
+      }
+
+      // Order TERKIRIM
+      const gross = sale.total || (sale.qty * (sale.unitPrice || 0));
+      const saleNetRevenue =
+        sale.omset > 0
+          ? sale.omset
+          : (sale.netRevenue > 0
+              ? sale.netRevenue
+              : gross - (sale.voucher || 0) - (sale.discount || 0) - fee);
+
+      const saleHpp =
+        sale.totalHpp > 0
+          ? sale.totalHpp
+          : (sale.hpp > 0
+              ? sale.hpp
+              : sale.qty * avgCost);
+
+      const saleProfit =
+        sale.laba !== 0 && sale.laba !== undefined && sale.laba !== null
+          ? sale.laba
+          : saleNetRevenue - saleHpp;
+
+      totalGross += gross;
+      totalFee += fee;
+      netRevenue += saleNetRevenue;
+      totalHPP += saleHpp;
+      totalQtySold += sale.qty;
+
+      // Unique order based on resi (or orderId fallback)
+      const orderKey = sale.resi?.trim() || sale.orderId?.trim() || sale.id;
+      uniqueOrders.add(orderKey);
+
+      // Time series data (daily aggregation)
       const dateStr = sale.date.toISOString().split('T')[0];
       if (!dateMap.has(dateStr)) {
         dateMap.set(dateStr, {
@@ -106,40 +145,17 @@ export async function GET(request: Request) {
           profit: 0,
         });
       }
-      const entry = dateMap.get(dateStr)!;
-      const saleRevenue = sale.total - (sale.fee || 0);
-      const avgCost = costMap.get(sale.skuId) || 0;
-      const estimatedHPP = sale.qty * avgCost;
-      entry.revenue += saleRevenue;
-      entry.hpp += estimatedHPP;
-      entry.profit = entry.revenue - entry.hpp;
-    });
+      const timeEntry = dateMap.get(dateStr)!;
+      timeEntry.revenue += saleNetRevenue;
+      timeEntry.hpp += saleHpp;
+      timeEntry.profit += saleProfit;
 
-    const timeSeriesData = Array.from(dateMap.values()).sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-
-    // Marketplace breakdown
-    const marketplaceMap = new Map<string, number>();
-    sales.forEach((sale) => {
+      // Marketplace breakdown
       const channel = sale.channel || 'OFFLINE';
-      const revenue = sale.total - (sale.fee || 0);
-      marketplaceMap.set(channel, (marketplaceMap.get(channel) || 0) + revenue);
-    });
+      marketplaceMap.set(channel, (marketplaceMap.get(channel) || 0) + saleNetRevenue);
 
-    const marketplaceData = Array.from(marketplaceMap.entries()).map(
-      ([name, revenue]) => ({ name, revenue })
-    );
-
-    // Top 10 SKUs by profit
-    const skuProfitMap = new Map<string, any>();
-    sales.forEach((sale) => {
+      // Top 10 SKUs by profit
       const skuCode = sale.sku?.code || 'Unknown';
-      const saleRevenue = sale.total - (sale.fee || 0);
-      const avgCost = costMap.get(sale.skuId) || 0;
-      const estimatedHPP = sale.qty * avgCost;
-      const saleProfit = saleRevenue - estimatedHPP;
-
       if (!skuProfitMap.has(skuCode)) {
         skuProfitMap.set(skuCode, {
           skuCode,
@@ -148,15 +164,66 @@ export async function GET(request: Request) {
           profit: 0,
         });
       }
-      const entry = skuProfitMap.get(skuCode)!;
-      entry.quantity += sale.qty;
-      entry.revenue += saleRevenue;
-      entry.profit += saleProfit;
+      const skuEntry = skuProfitMap.get(skuCode)!;
+      skuEntry.quantity += sale.qty;
+      skuEntry.revenue += saleNetRevenue;
+      skuEntry.profit += saleProfit;
     });
+
+    const timeSeriesData = Array.from(dateMap.values()).sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    const marketplaceData = Array.from(marketplaceMap.entries()).map(
+      ([name, revenue]) => ({ name, revenue })
+    );
 
     const top10SKUs = Array.from(skuProfitMap.values())
       .sort((a, b) => b.profit - a.profit)
       .slice(0, 10);
+
+    // Other Expenses & Breakages
+    const totalExpenses = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+    const totalBreakage = breakages.reduce((sum, brk) => sum + (brk.total || 0), 0);
+    const totalOtherLosses = totalExpenses + totalBreakage + returnLoss;
+
+    // Financial KPI Summary
+    const grossProfit = netRevenue - totalHPP;
+    const netProfit = grossProfit - totalOtherLosses;
+    const profitMargin =
+      netRevenue > 0 ? Math.round((netProfit / netRevenue) * 100) : 0;
+    const totalOrders = uniqueOrders.size;
+    const avgOrderValue = totalOrders > 0 ? Math.round(netRevenue / totalOrders) : 0;
+
+    // Current Inventory values by type
+    const skuInventories = new Map<string, { quantity: number; sku: any }>();
+    inventory.forEach((inv) => {
+      if (!skuInventories.has(inv.skuId)) {
+        skuInventories.set(inv.skuId, { quantity: 0, sku: inv.sku });
+      }
+      const entry = skuInventories.get(inv.skuId)!;
+      entry.quantity += inv.movement;
+    });
+
+    const inventoryByType: Record<string, number> = {
+      RAW: 0,
+      PRODUCT: 0,
+      PACKAGE: 0,
+    };
+
+    skuInventories.forEach(({ quantity, sku }) => {
+      const type = sku?.type;
+      const avgCost = costMap.get(sku?.id) ?? sku?.hppPrice ?? 0;
+      const value = Math.max(0, quantity) * avgCost;
+      if (type && inventoryByType[type] !== undefined) {
+        inventoryByType[type] += value;
+      }
+    });
+
+    // Total Purchases within date range (RAW)
+    const totalPurchaseAmount = purchases
+      .filter((p) => !p.sku || p.sku.type === 'RAW')
+      .reduce((sum: number, purchase) => sum + (purchase.total || 0), 0);
 
     // Inventory donut data
     const inventoryDonutData = [
@@ -179,17 +246,24 @@ export async function GET(request: Request) {
 
     return Response.json({
       kpi: {
+        totalGross,
+        totalFee,
         netRevenue,
         totalHPP,
+        grossProfit,
+        totalExpenses,
+        totalBreakage,
+        returnLoss,
+        totalOtherLosses,
         netProfit,
         profitMargin,
         totalOrders,
+        totalQtySold,
         avgOrderValue,
         inventoryRaw: inventoryByType['RAW'] || 0,
         inventoryProduct: inventoryByType['PRODUCT'] || 0,
         inventoryPackage: inventoryByType['PACKAGE'] || 0,
         totalPurchaseAmount,
-        totalFee
       },
       timeSeriesData,
       marketplaceData,
