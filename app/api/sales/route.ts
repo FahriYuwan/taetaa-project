@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { MovementType, Channel } from '@prisma/client';
+import { resolveSaleHpp, resolveSaleProfit } from '@/lib/finance';
+import { validateBody, createSaleSchema } from '@/lib/validations';
 
 
 export async function GET(req: Request) {
@@ -57,20 +59,11 @@ export async function GET(req: Request) {
           ? sale.netRevenue
           : total - fee;
 
-      // HPP: use stored value (from bulk paste) or calculate from avgCost/hppPrice
+      // HPP & Laba: unified resolution from lib/finance
       const avgCost = costMap.get(sale.skuId) ?? sale.sku?.hppPrice ?? 0;
-      const hpp =
-        sale.hpp !== undefined && sale.hpp !== null && sale.hpp !== 0
-          ? sale.hpp
-          : qty * avgCost;
-      const totalHpp =
-        sale.totalHpp !== undefined && sale.totalHpp !== null && sale.totalHpp !== 0
-          ? sale.totalHpp
-          : hpp;
-      const laba =
-        sale.laba !== undefined && sale.laba !== null && sale.laba !== 0
-          ? sale.laba
-          : netRevenue - hpp;
+      const totalHpp = resolveSaleHpp(sale, avgCost);
+      const hpp = sale.hpp > 0 ? sale.hpp : (qty > 0 ? totalHpp / qty : totalHpp);
+      const laba = resolveSaleProfit(sale, netRevenue, totalHpp);
 
       return {
         ...sale,
@@ -93,6 +86,11 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const validation = validateBody(createSaleSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error, details: validation.issues }, { status: 400 });
+    }
+
     const {
       date,
       skuId,
@@ -100,17 +98,14 @@ export async function POST(req: Request) {
       unitPrice,
       channel,
       orderId,
+      resi,
       fee,
       notes,
       voucher,
       discount,
       platformFee,
       shippingFee,
-    } = body;
-
-    if (!date || !skuId || !qty || !channel) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
+    } = validation.data;
 
     const result = await prisma.$transaction(async (tx) => {
       // 1. Verify stock availability

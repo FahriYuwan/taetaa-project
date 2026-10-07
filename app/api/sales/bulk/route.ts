@@ -58,6 +58,7 @@ export async function POST(req: Request) {
     let matchedCount = 0;
     let createdCount = 0;
     let skippedCount = 0;
+    let discrepancyCount = 0;
     const errors: string[] = [];
 
     await prisma.$transaction(async (tx) => {
@@ -179,45 +180,68 @@ export async function POST(req: Request) {
 
         if (existingSale) {
           // MATCH: Update existing sale with finance data
-          const hasQtyDiscrepancy = existingSale.qty !== qty;
-          const noteText = hasQtyDiscrepancy
-            ? `⚠️ SELISIH QTY: Logistik ${existingSale.qty} unit, Finance lapor ${qty} unit`
-            : existingSale.notes;
+          const hasQtyDiscrepancy = Math.abs(existingSale.qty - qty) > 0.001;
 
           if (hasQtyDiscrepancy) {
-            errors.push(`Resi ${resiClean || orderIdClean} (${skuCodeClean}): Selisih Qty - Logistik ${existingSale.qty} unit vs Finance ${qty} unit`);
+            // ADR Decision 2: qty mismatch → flag for human confirmation.
+            // DO NOT set financeMatched=true. Store financial data as draft
+            // but hold the record in SELISIH_QTY status.
+            errors.push(
+              `Resi ${resiClean || orderIdClean} (${skuCodeClean}): Selisih Qty — Logistik ${existingSale.qty} unit vs Finance ${qty} unit. Menunggu konfirmasi.`
+            );
+            discrepancyCount++;
+
+            await tx.sale.update({
+              where: { id: existingSale.id },
+              data: {
+                orderId: orderIdClean || existingSale.orderId,
+                resi: resiClean || existingSale.resi,
+                // Store incoming finance values as draft (using logistic qty for stock-safe fields)
+                unitPrice,
+                voucher,
+                discount,
+                platformFee,
+                shippingFee,
+                fee: platformFee + shippingFee,
+                // Mark discrepancy — intentionally NOT setting financeMatched: true
+                hasDiscrepancy: true,
+                status: 'SELISIH_QTY',
+                notes: `⚠️ SELISIH QTY: Logistik ${existingSale.qty} unit, Finance lapor ${qty} unit. Menunggu konfirmasi sebelum rekonsiliasi final.`,
+              },
+            });
+          } else {
+            // No discrepancy — safe to fully reconcile
+            const effectiveQty = existingSale.qty; // physical warehouse qty is the source of truth
+            const totalVal = effectiveQty * unitPrice;
+            const netRev = omset > 0 ? omset : totalVal - voucher - discount - (platformFee + shippingFee);
+            const effTotalHpp = totalHpp > 0 ? totalHpp : effectiveQty * (existingSale.hpp || sku.hppPrice || 0);
+            const computedLaba = laba !== 0 ? laba : netRev - effTotalHpp;
+
+            await tx.sale.update({
+              where: { id: existingSale.id },
+              data: {
+                date,
+                orderId: orderIdClean || existingSale.orderId,
+                resi: resiClean || existingSale.resi,
+                unitPrice,
+                total: totalVal,
+                voucher,
+                discount,
+                platformFee,
+                shippingFee,
+                fee: platformFee + shippingFee,
+                omset: netRev,
+                netRevenue: netRev,
+                hpp: hpp > 0 ? hpp : existingSale.hpp,
+                totalHpp: effTotalHpp,
+                laba: computedLaba,
+                financeMatched: true,
+                hasDiscrepancy: false,
+                notes: existingSale.notes,
+              },
+            });
+            matchedCount++;
           }
-
-          // Gunakan existingSale.qty fisik gudang untuk konsistensi kartu persediaan
-          const effectiveQty = existingSale.qty;
-          const totalVal = effectiveQty * unitPrice;
-          const netRev = omset > 0 ? omset : totalVal - voucher - discount - totalFee;
-          const effTotalHpp = totalHpp > 0 ? totalHpp : effectiveQty * (existingSale.hpp || sku.hppPrice || 0);
-          const computedLaba = laba !== 0 ? laba : netRev - effTotalHpp;
-
-          await tx.sale.update({
-            where: { id: existingSale.id },
-            data: {
-              date: date,
-              orderId: orderIdClean || existingSale.orderId,
-              resi: resiClean || existingSale.resi,
-              unitPrice,
-              total: totalVal,
-              voucher,
-              discount,
-              platformFee,
-              shippingFee,
-              fee: totalFee,
-              omset: netRev,
-              netRevenue: netRev,
-              hpp: hpp > 0 ? hpp : existingSale.hpp,
-              totalHpp: effTotalHpp,
-              laba: computedLaba,
-              financeMatched: true,
-              notes: noteText,
-            },
-          });
-          matchedCount++;
         } else {
           // NO MATCH: Check if already fully entered (prevent duplicate)
           const duplicate = await tx.sale.findFirst({
@@ -305,6 +329,7 @@ export async function POST(req: Request) {
     const message = [
       matchedCount > 0 ? `${matchedCount} data dicocokkan dengan scan logistik` : '',
       createdCount > 0 ? `${createdCount} data baru dibuat` : '',
+      discrepancyCount > 0 ? `${discrepancyCount} data ditandai SELISIH QTY (perlu konfirmasi)` : '',
       skippedCount > 0 ? `${skippedCount} baris dilewati` : '',
     ]
       .filter(Boolean)
@@ -314,6 +339,7 @@ export async function POST(req: Request) {
       success: true,
       matched: matchedCount,
       created: createdCount,
+      discrepancies: discrepancyCount,
       skipped: skippedCount,
       errors,
       message: message || 'Tidak ada data yang diproses',

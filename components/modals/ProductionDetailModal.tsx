@@ -48,6 +48,12 @@ export interface ProductionDetail {
       productSize?: number;
     };
   }>;
+  kemasanInputs?: Array<{
+    id: string;
+    kemasanId: string;
+    qtyUsed: number;
+    isManual: boolean;
+  }>;
   notes: string | null;
 }
 
@@ -66,11 +72,18 @@ function getManualStatus(
     childKemasan?: { code?: string } | null;
     childSku?: { code?: string } | null;
   },
-  notes: string | null | undefined
+  notes: string | null | undefined,
+  kemasanInputs?: Array<{ kemasanId: string; isManual: boolean }> | null
 ): boolean {
+  // 1. Primary source: structured DB relation
+  if (kemasanInputs && kemasanInputs.length > 0 && bom.childKemasanId) {
+    const found = kemasanInputs.find((ki) => ki.kemasanId === bom.childKemasanId);
+    if (found) return true;
+  }
+
   if (!notes) return false;
 
-  // 1. Try reading [MANUAL_CONSUMPTIONS:{...}] structured tag
+  // 2. Fallback: Try reading [MANUAL_CONSUMPTIONS:{...}] structured tag
   const match = notes.match(/\[MANUAL_CONSUMPTIONS:(.*?)\]/);
   if (match && match[1]) {
     try {
@@ -228,7 +241,7 @@ export function ProductionDetailModal({
       const items = matchingBoms.map((bom) => {
         const item = bom.childKemasan || bom.childSku;
         const isManual = bom.consumptionType === 'MANUAL';
-        const isManualChecked = isManual ? getManualStatus(bom, activeProduction.notes) : false;
+        const isManualChecked = isManual ? getManualStatus(bom, activeProduction.notes, activeProduction.kemasanInputs) : false;
         const qtyUsed = isManual ? (isManualChecked ? 1 : 0) : bom.quantity * activeProduction.outputQty;
 
         return {

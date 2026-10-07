@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { resolveSaleHpp, resolveSaleProfit } from '@/lib/finance';
 
 export async function GET(request: Request) {
   try {
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
     to.setHours(23, 59, 59, 999);
 
     // Fetch data in parallel for performance
-    const [sales, purchases, inventory, costHistories, expenses, breakages] = await Promise.all([
+    const [sales, purchases, allSkus, costHistories, expenses, breakages] = await Promise.all([
       prisma.sale.findMany({
         where: {
           date: {
@@ -38,11 +39,12 @@ export async function GET(request: Request) {
           sku: true,
         },
       }),
-      prisma.inventory.findMany({
-        include: {
-          sku: true,
+      prisma.sKU.findMany({
+        select: {
+          id: true,
+          type: true,
+          hppPrice: true,
         },
-        orderBy: { createdAt: 'desc' },
       }),
       prisma.sKUCostHistory.findMany(),
       prisma.otherExpense.findMany({
@@ -113,17 +115,8 @@ export async function GET(request: Request) {
               ? sale.netRevenue
               : gross - (sale.voucher || 0) - (sale.discount || 0) - fee);
 
-      const saleHpp =
-        sale.totalHpp > 0
-          ? sale.totalHpp
-          : (sale.hpp > 0
-              ? sale.hpp
-              : sale.qty * avgCost);
-
-      const saleProfit =
-        sale.laba !== 0 && sale.laba !== undefined && sale.laba !== null
-          ? sale.laba
-          : saleNetRevenue - saleHpp;
+      const saleHpp = resolveSaleHpp(sale, avgCost);
+      const saleProfit = resolveSaleProfit(sale, saleNetRevenue, saleHpp);
 
       totalGross += gross;
       totalFee += fee;
@@ -196,25 +189,19 @@ export async function GET(request: Request) {
     const avgOrderValue = totalOrders > 0 ? Math.round(netRevenue / totalOrders) : 0;
 
     // Current Inventory values by type
-    const skuInventories = new Map<string, { quantity: number; sku: any }>();
-    inventory.forEach((inv) => {
-      if (!skuInventories.has(inv.skuId)) {
-        skuInventories.set(inv.skuId, { quantity: 0, sku: inv.sku });
-      }
-      const entry = skuInventories.get(inv.skuId)!;
-      entry.quantity += inv.movement;
-    });
-
+    const skuMap = new Map(allSkus.map((s) => [s.id, s]));
     const inventoryByType: Record<string, number> = {
       RAW: 0,
       PRODUCT: 0,
       PACKAGE: 0,
     };
 
-    skuInventories.forEach(({ quantity, sku }) => {
-      const type = sku?.type;
-      const avgCost = costMap.get(sku?.id) ?? sku?.hppPrice ?? 0;
-      const value = Math.max(0, quantity) * avgCost;
+    costHistories.forEach((ch) => {
+      const sku = skuMap.get(ch.skuId);
+      if (!sku) return;
+      const type = sku.type;
+      const avgCost = ch.avgCost || sku.hppPrice || 0;
+      const value = Math.max(0, ch.stock) * avgCost;
       if (type && inventoryByType[type] !== undefined) {
         inventoryByType[type] += value;
       }

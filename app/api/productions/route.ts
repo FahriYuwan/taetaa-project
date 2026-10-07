@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { MovementType } from '@prisma/client';
+import { validateBody, createProductionSchema } from '@/lib/validations';
 
 export async function GET(req: Request) {
   try {
@@ -20,6 +21,9 @@ export async function GET(req: Request) {
         inputs: {
           include: { inputSku: true }
         },
+        kemasanInputs: {
+          include: { kemasan: true }
+        },
       },
       orderBy: { date: 'desc' },
     });
@@ -33,11 +37,12 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { date, outputSkuId, outputQty, notes, manualConsumptions } = body;
-
-    if (!date || !outputSkuId || !outputQty) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    const validation = validateBody(createProductionSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error, details: validation.issues }, { status: 400 });
     }
+
+    const { date, outputSkuId, outputQty, notes, manualConsumptions } = validation.data;
 
     // 1. Fetch BOM for the output SKU
     const skuWithBom = await prisma.sKU.findUnique({
@@ -64,6 +69,7 @@ export async function POST(req: Request) {
     const result = await prisma.$transaction(async (tx) => {
       let totalProductionCost = 0;
       const productionInputsData = [];
+      const kemasanInputsData = [];
 
       // Create Production records first
       const productionOutput = await tx.productionOutput.create({
@@ -164,18 +170,29 @@ export async function POST(req: Request) {
             qtyUsed: qtyNeeded
           });
         } else {
-          // Kemasan items just get stock reduction for now
+          // Kemasan items: reduce stock and record structured input
           await tx.masterItemKemasan.update({
             where: { id: bom.childKemasanId! },
             data: { stock: { decrement: qtyNeeded } }
           });
+          kemasanInputsData.push({
+            productionId: production.id,
+            kemasanId: bom.childKemasanId!,
+            qtyUsed: qtyNeeded,
+            isManual,
+          });
         }
       }
 
-      // Save production inputs
+      // Save production inputs (SKU & Kemasan)
       if (productionInputsData.length > 0) {
         await tx.productionInput.createMany({
           data: productionInputsData
+        });
+      }
+      if (kemasanInputsData.length > 0) {
+        await tx.productionKemasanInput.createMany({
+          data: kemasanInputsData
         });
       }
 

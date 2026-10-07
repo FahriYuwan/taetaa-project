@@ -1,4 +1,4 @@
-import { PrismaClient, SKUType, Channel, MovementType, BOMCategory, ConsumptionType, ExpenseCategory, BreakageCategory, AffiliateActivityType } from '@prisma/client';
+import { PrismaClient, SKUType, Channel, MovementType, BOMCategory, ConsumptionType, ExpenseCategory, BreakageCategory, AffiliateActivityType, SaleStatus } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import * as dotenv from 'dotenv';
@@ -23,6 +23,7 @@ async function main() {
   await prisma.marketing.deleteMany({});
   await prisma.sale.deleteMany({});
   await prisma.inventory.deleteMany({});
+  await prisma.productionKemasanInput.deleteMany({});
   await prisma.productionInput.deleteMany({});
   await prisma.production.deleteMany({});
   await prisma.productionOutput.deleteMany({});
@@ -193,6 +194,16 @@ async function main() {
   // Potong stok kemasan otomatis & manual (karena dicentang)
   await prisma.masterItemKemasan.update({ where: { id: btl1.id }, data: { stock: { decrement: 50 } } });
   await prisma.masterItemKemasan.update({ where: { id: sltp.id }, data: { stock: { decrement: 1 } } }); // MANUAL dicentang
+  // Catat kemasan ke ProductionKemasanInput (relasi terstruktur)
+  await prisma.productionKemasanInput.createMany({
+    data: [
+      { productionId: prod1.id, kemasanId: btl1.id, qtyUsed: 50, isManual: false },
+      { productionId: prod1.id, kemasanId: stk1.id, qtyUsed: 50, isManual: false },
+      { productionId: prod1.id, kemasanId: tbtl.id, qtyUsed: 50, isManual: false },
+      { productionId: prod1.id, kemasanId: dus1.id, qtyUsed: 50, isManual: false },
+      { productionId: prod1.id, kemasanId: sltp.id, qtyUsed: 1, isManual: true },
+    ]
+  });
 
   // Produksi 2: PLWR tidak dicentang (stok tidak berubah)
   const prod2Output = await prisma.productionOutput.create({ data: { skuId: sbn2Pcf.id } });
@@ -222,6 +233,14 @@ async function main() {
   await prisma.sKUCostHistory.update({ where: { skuId: pcfRaw.id }, data: { stock: { decrement: 2.5 } } });
   await prisma.masterItemKemasan.update({ where: { id: btl500.id }, data: { stock: { decrement: 100 } } });
   // plwr.id tidak diupdate karena tidak dicentang!
+  await prisma.productionKemasanInput.createMany({
+    data: [
+      { productionId: prod2.id, kemasanId: btl500.id, qtyUsed: 100, isManual: false },
+      { productionId: prod2.id, kemasanId: stk2.id, qtyUsed: 100, isManual: false },
+      { productionId: prod2.id, kemasanId: tbtl.id, qtyUsed: 100, isManual: false },
+      { productionId: prod2.id, kemasanId: dus2.id, qtyUsed: 100, isManual: false },
+    ]
+  });
 
   // Produksi 3: SBN3-PVL (output: 13 unit -> setelah terjual 5 & affiliate 5, sisa stock = 3; stockMin = 10)
   const prod3Output = await prisma.productionOutput.create({ data: { skuId: sbn3Pvl.id } });
@@ -250,25 +269,49 @@ async function main() {
   await prisma.sKUCostHistory.update({ where: { skuId: sbnRaw.id }, data: { stock: { decrement: 0.065 } } });
   await prisma.sKUCostHistory.update({ where: { skuId: pvlRaw.id }, data: { stock: { decrement: 0.0052 } } });
   await prisma.masterItemKemasan.update({ where: { id: btl100.id }, data: { stock: { decrement: 13 } } });
+  await prisma.productionKemasanInput.createMany({
+    data: [
+      { productionId: prod3.id, kemasanId: btl100.id, qtyUsed: 13, isManual: false },
+      { productionId: prod3.id, kemasanId: stk3.id, qtyUsed: 13, isManual: false },
+      { productionId: prod3.id, kemasanId: tbtl.id, qtyUsed: 13, isManual: false },
+      { productionId: prod3.id, kemasanId: dus3.id, qtyUsed: 13, isManual: false },
+    ]
+  });
 
   console.log('--- SEEDING SALES (PURE MARKETPLACE CHANNELS) ---');
   const sales = [
-    { date: '2026-09-07', channel: Channel.SHOPEE, skuId: sbn1Pbg.id, qty: 10, unitPrice: 25000, fee: 2000, orderId: 'SHP-101', netRevenue: 248000, total: 250000 },
-    { date: '2026-09-08', channel: Channel.TIKTOK, skuId: sbn2Pcf.id, qty: 15, unitPrice: 15000, fee: 1500, orderId: 'TT-201', netRevenue: 223500, total: 225000 },
-    { date: '2026-09-08', channel: Channel.OFFLINE, skuId: sbn3Pvl.id, qty: 5, unitPrice: 5000, fee: 0, orderId: 'OFF-301', netRevenue: 25000, total: 25000 },
-    { date: '2026-09-09', channel: Channel.SHOPEE, skuId: sbn1Pbg.id, qty: 5, unitPrice: 25000, fee: 1000, orderId: 'SHP-102', netRevenue: 124000, total: 125000 },
+    { date: '2026-09-07', channel: Channel.SHOPEE, skuId: sbn1Pbg.id, qty: 10, unitPrice: 25000, fee: 2000, orderId: 'SHP-101', resi: 'JP-SHP-101', netRevenue: 248000, total: 250000, status: SaleStatus.TERKIRIM, scannedByLogistic: true, financeMatched: true },
+    { date: '2026-09-08', channel: Channel.TIKTOK, skuId: sbn2Pcf.id, qty: 15, unitPrice: 15000, fee: 1500, orderId: 'TT-201', resi: 'JP-TT-201', netRevenue: 223500, total: 225000, status: SaleStatus.TERKIRIM, scannedByLogistic: true, financeMatched: true },
+    { date: '2026-09-08', channel: Channel.OFFLINE, skuId: sbn3Pvl.id, qty: 5, unitPrice: 5000, fee: 0, orderId: 'OFF-301', resi: null, netRevenue: 25000, total: 25000, status: SaleStatus.TERKIRIM, scannedByLogistic: false, financeMatched: true },
+    { date: '2026-09-09', channel: Channel.SHOPEE, skuId: sbn1Pbg.id, qty: 5, unitPrice: 25000, fee: 1000, orderId: 'SHP-102', resi: 'JP-SHP-102', netRevenue: 124000, total: 125000, status: SaleStatus.TERKIRIM, scannedByLogistic: true, financeMatched: true },
+    // Sample Transaksi Discrepancy (Mendemonstrasikan status SELISIH_QTY & Resolusi ADR 0001)
+    { date: '2026-09-09', channel: Channel.SHOPEE, skuId: sbn2Pcf.id, qty: 5, unitPrice: 15000, fee: 0, orderId: 'SHP-SELISIH-01', resi: 'JP-DISCREP-01', netRevenue: 75000, total: 75000, status: SaleStatus.SELISIH_QTY, hasDiscrepancy: true, scannedByLogistic: true, financeMatched: false, notes: '⚠️ SELISIH QTY: Logistik scan 5 unit, Finance lapor 3 unit. Menunggu konfirmasi resolusi.' },
+    // Sample Transaksi Retur (Mendemonstrasikan status DIRETURN & Relasi Sale -> Return)
+    { date: '2026-09-09', channel: Channel.TIKTOK, skuId: sbn1Pbg.id, qty: 1, unitPrice: 25000, fee: 0, orderId: 'TT-RETUR-01', resi: 'JP-RETUR-01', netRevenue: 0, total: 25000, status: SaleStatus.DIRETURN, scannedByLogistic: true, financeMatched: false, notes: 'Barang diretur customer karena botol retak' }
   ];
 
   for (const s of sales) {
     const sale = await prisma.sale.create({
       data: { ...s, date: new Date(s.date) }
     });
-    await prisma.inventory.create({
-      data: { date: new Date(s.date), skuId: s.skuId, movement: -s.qty, type: MovementType.SALE, reference: sale.id }
-    });
-    const ch = await prisma.sKUCostHistory.findUnique({ where: { skuId: s.skuId } });
-    if (ch) {
-      await prisma.sKUCostHistory.update({ where: { skuId: s.skuId }, data: { stock: { decrement: s.qty } } });
+    // Jika DIRETURN, catat data audit ke tabel Return
+    if (s.status === SaleStatus.DIRETURN) {
+      await prisma.return.create({
+        data: {
+          date: new Date(s.date),
+          saleId: sale.id,
+          qty: s.qty,
+          reason: 'Botol retak saat pengiriman kurir',
+        }
+      });
+    } else {
+      await prisma.inventory.create({
+        data: { date: new Date(s.date), skuId: s.skuId, movement: -s.qty, type: MovementType.SALE, reference: sale.id }
+      });
+      const ch = await prisma.sKUCostHistory.findUnique({ where: { skuId: s.skuId } });
+      if (ch) {
+        await prisma.sKUCostHistory.update({ where: { skuId: s.skuId }, data: { stock: { decrement: s.qty } } });
+      }
     }
   }
 

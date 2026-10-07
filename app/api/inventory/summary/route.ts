@@ -16,18 +16,70 @@ export async function GET(req: Request) {
     const to = new Date(toDate);
     to.setHours(23, 59, 59, 999);
 
-    // 1. Fetch all SKUs and their cost history
-    const skus = await prisma.sKU.findMany({
-      include: {
-        inventory: true, // We'll aggregate this in JS for flexibility
-      },
-    });
+    // 1. Batch fetch all required data in parallel — eliminates N+1 queries completely
+    const [skus, costHistories, allBomComponents, productionOutputs] = await Promise.all([
+      prisma.sKU.findMany({
+        include: {
+          inventory: {
+            where: {
+              date: { lte: to },
+            },
+          },
+        },
+      }),
+      prisma.sKUCostHistory.findMany(),
+      prisma.bOMComponent.findMany({
+        where: { childSkuId: { not: null } },
+        include: {
+          parent: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+              productSize: true,
+            },
+          },
+        },
+      }),
+      prisma.productionOutput.findMany({
+        where: {
+          production: {
+            date: {
+              gte: from,
+              lte: to,
+            },
+          },
+        },
+        include: {
+          production: {
+            select: {
+              outputQty: true,
+            },
+          },
+        },
+      }),
+    ]);
 
-    const costHistories = await prisma.sKUCostHistory.findMany();
-    const costMap = new Map(costHistories.map(ch => [ch.skuId, ch]));
+    const costMap = new Map(costHistories.map((ch) => [ch.skuId, ch]));
 
-    // 2. Aggregate movements per SKU
-    const result = await Promise.all(skus.map(async (sku) => {
+    // Pre-aggregate production quantities by parent SKU
+    const productionQtyByParentSku = new Map<string, number>();
+    for (const po of productionOutputs) {
+      const current = productionQtyByParentSku.get(po.skuId) || 0;
+      productionQtyByParentSku.set(po.skuId, current + (po.production?.outputQty || 0));
+    }
+
+    // Pre-group BOM components by child SKU
+    const bomByChildSku = new Map<string, typeof allBomComponents>();
+    for (const bom of allBomComponents) {
+      if (!bom.childSkuId) continue;
+      const list = bomByChildSku.get(bom.childSkuId) || [];
+      list.push(bom);
+      bomByChildSku.set(bom.childSkuId, list);
+    }
+
+    // 2. Aggregate movements per SKU purely in memory
+    const result = skus.map((sku) => {
       let stockAwal = 0;
       let masukBeli = 0;
       let masukProduksi = 0;
@@ -36,7 +88,7 @@ export async function GET(req: Request) {
       let keluarBreakage = 0;
       let keluarAffiliate = 0;
 
-      sku.inventory.forEach(inv => {
+      sku.inventory.forEach((inv) => {
         const invDate = new Date(inv.date);
         if (invDate < from) {
           stockAwal += inv.movement;
@@ -56,53 +108,27 @@ export async function GET(req: Request) {
         }
       });
 
-      const stockAkhir = stockAwal + masukBeli + masukProduksi - keluarProduksi - keluarJual - keluarBreakage - keluarAffiliate;
+      const stockAkhir =
+        stockAwal + masukBeli + masukProduksi - keluarProduksi - keluarJual - keluarBreakage - keluarAffiliate;
       const costInfo = costMap.get(sku.id);
       const avgCost = costInfo?.avgCost || 0;
       const nilaiStock = stockAkhir * avgCost;
 
-      // 2a. Fetch breakdown for RAW if needed
-      let rawBreakdown = null;
+      // 2a. Calculate breakdown for RAW purely from in-memory maps
+      let rawBreakdown: Array<{ parentCode: string; qtyProduced: number; totalUsage: number }> | null = null;
       if (sku.type === SKUType.RAW) {
-        // Find SKUs that use this RAW as a component
-        const uses = await prisma.bOMComponent.findMany({
-          where: { childSkuId: sku.id },
-          include: { 
-            parent: {
-              select: {
-                code: true,
-                name: true,
-                productSize: true
-              }
-            }
-          }
-        });
+        const uses = bomByChildSku.get(sku.id) || [];
+        const usageList: Array<{ parentCode: string; qtyProduced: number; totalUsage: number }> = [];
 
-        const usageList = [];
         for (const use of uses) {
-          // Calculate total ml used for this parent SKU in current period
-          // Note: This is an approximation based on production outputs
-          const productionOutputs = await prisma.productionOutput.findMany({
-            where: { 
-              skuId: use.parentId,
-              production: {
-                date: {
-                  gte: from,
-                  lte: to
-                }
-              }
-            },
-            include: { production: true }
-          });
-
-          const totalQty = productionOutputs.reduce((sum, po) => sum + (po.production?.outputQty || 0), 0);
+          const totalQty = productionQtyByParentSku.get(use.parentId) || 0;
           const totalUsageMl = totalQty * use.quantity; // use.quantity is ml needed per parent unit
 
           if (totalUsageMl > 0) {
             usageList.push({
               parentCode: use.parent.code,
               qtyProduced: totalQty,
-              totalUsage: totalUsageMl
+              totalUsage: totalUsageMl,
             });
           }
         }
@@ -125,19 +151,19 @@ export async function GET(req: Request) {
         stockMin: sku.stockMin ?? 0,
         avgCost,
         nilaiStock,
-        rawBreakdown
+        rawBreakdown,
       };
-    }));
+    });
 
     // 3. Calculate KPIs
     const kpi = {
       totalValue: 0,
       raw: { value: 0, count: 0 },
       product: { value: 0, count: 0 },
-      package: { value: 0, count: 0 }
+      package: { value: 0, count: 0 },
     };
 
-    result.forEach(item => {
+    result.forEach((item) => {
       kpi.totalValue += item.nilaiStock;
       if (item.type === SKUType.RAW) {
         kpi.raw.value += item.nilaiStock;

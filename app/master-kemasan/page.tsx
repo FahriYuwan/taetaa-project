@@ -119,19 +119,34 @@ export default function MasterKemasanPage() {
           className="flex gap-2 mb-6 p-4 rounded-t-lg"
           style={{ backgroundColor: colors.neutral.card, borderColor: colors.neutral.border }}
         >
-          {(['all', 'PACKING', 'STIKER', 'SAFETY', 'DUS'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className="px-4 py-2 rounded text-sm font-medium transition-all"
-              style={{
-                backgroundColor: filter === tab ? colors.brand[500] : 'transparent',
-                color: filter === tab ? 'white' : colors.neutral.textMuted,
-              }}
-            >
-              {tab === 'all' ? 'Semua' : tab}
-            </button>
-          ))}
+          {(['all', 'PACKING', 'STIKER', 'SAFETY', 'DUS'] as const).map((tab) => {
+            const isActive = filter === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setFilter(tab)}
+                className="px-4 py-2 rounded text-sm font-medium transition-all cursor-pointer select-none"
+                style={{
+                  backgroundColor: isActive ? colors.brand[500] : 'transparent',
+                  color: isActive ? 'white' : colors.neutral.textMuted,
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(79,195,247,0.08)';
+                    (e.currentTarget as HTMLElement).style.color = colors.neutral.textStrong;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+                    (e.currentTarget as HTMLElement).style.color = colors.neutral.textMuted;
+                  }
+                }}
+              >
+                {tab === 'all' ? 'Semua' : tab}
+              </button>
+            );
+          })}
         </div>
 
         <div 

@@ -46,7 +46,12 @@ export default function PembelianRawPage() {
   async function fetchPurchases() {
     try {
       setLoading(true);
-      const res = await fetch(`/api/purchases?from=${fromDate}&to=${toDate}`);
+      const params = new URLSearchParams();
+      if (fromDate) params.set('from', fromDate);
+      if (toDate) params.set('to', toDate);
+      const query = params.toString() ? `?${params.toString()}` : '';
+
+      const res = await fetch(`/api/purchases${query}`);
       if (res.ok) {
         const data = await res.json();
         setPurchases(data);
@@ -59,8 +64,12 @@ export default function PembelianRawPage() {
   }
 
   const filteredItems = purchases?.filter(item => {
-    const matchesSearch = item.sku.code.toLowerCase().includes(search.toLowerCase()) ||
-                         item.sku.name.toLowerCase().includes(search.toLowerCase());
+    const s = search.toLowerCase();
+    const matchesSearch =
+      !s ||
+      item.sku?.code.toLowerCase().includes(s) ||
+      item.sku?.name.toLowerCase().includes(s) ||
+      (item.supplier && item.supplier.toLowerCase().includes(s));
     return matchesSearch;
   }) || [];
 
@@ -85,7 +94,7 @@ export default function PembelianRawPage() {
     }
   }
 
-  const totalPembelian = purchases.reduce((sum, p) => sum + (p.total || 0), 0);
+  const totalPembelian = filteredItems.reduce((sum, p) => sum + (p.total || 0), 0);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: colors.neutral.bg }}>
@@ -93,47 +102,68 @@ export default function PembelianRawPage() {
         title="Pembelian RAW"
         subtitle="Catat pembelian bahan baku. Sistem otomatis update HPP rata-rata (Weighted Average)."
         actions={
-          <div className="flex flex-col items-end gap-4">
-            <div className="flex gap-2">
-              <Button variant="secondary" icon="📋" onClick={() => setShowBulkModal(true)}>
-                Bulk Paste
-              </Button>
-              <Button variant="primary" icon="➕" onClick={() => setShowAddModal(true)}>
-                Catat Pembelian
-              </Button>
+          <div className="flex flex-wrap items-center gap-2.5 md:gap-3">
+            {/* Periode Filter */}
+            <div
+              className="flex items-center gap-2 bg-white px-3 py-1.5 rounded border"
+              style={{ borderColor: colors.neutral.border }}
+            >
+              <span className="text-xs text-gray-500 font-medium">Periode:</span>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="text-xs text-gray-700 focus:outline-none cursor-pointer"
+              />
+              <span className="text-xs text-gray-400">s/d</span>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="text-xs text-gray-700 focus:outline-none cursor-pointer"
+              />
+              {(fromDate || toDate) && (
+                <button
+                  onClick={() => { setFromDate(''); setToDate(''); }}
+                  className="text-xs text-gray-400 hover:text-gray-600 ml-1 cursor-pointer"
+                  title="Reset Filter Periode"
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
-            <div className="flex flex-wrap gap-4 items-end bg-gray-50 p-3 rounded-lg border border-gray-100">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-400 uppercase">Periode</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
-                    className="px-2 py-1.5 border rounded text-xs bg-white"
-                  />
-                  <span className="text-gray-400">s/d</span>
-                  <input
-                    type="date"
-                    value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
-                    className="px-2 py-1.5 border rounded text-xs bg-white"
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-1 border-l pl-4 ml-2">
-                <label className="text-[10px] font-bold text-gray-400 uppercase">Pencarian</label>
-                <input
-                  type="text"
-                  placeholder="Cari SKU atau Nama..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="block px-3 py-1.5 border rounded text-xs bg-white w-40"
-                />
-              </div>
+            {/* Pencarian Input */}
+            <div
+              className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded border"
+              style={{ borderColor: colors.neutral.border }}
+            >
+              <span className="text-xs text-gray-400">🔍</span>
+              <input
+                type="text"
+                placeholder="Cari SKU / Supplier..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="text-xs text-gray-700 focus:outline-none w-36 md:w-44"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer"
+                  title="Bersihkan Pencarian"
+                >
+                  ✕
+                </button>
+              )}
             </div>
+
+            {/* Action Buttons */}
+            <Button variant="secondary" icon="📋" onClick={() => setShowBulkModal(true)}>
+              Bulk Paste
+            </Button>
+            <Button variant="primary" icon="➕" onClick={() => setShowAddModal(true)}>
+              Catat Pembelian
+            </Button>
           </div>
         }
       />

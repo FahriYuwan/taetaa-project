@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PageHeader } from '@/components/header/PageHeader';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { TimeSeriesChart } from '@/components/dashboard/TimeSeriesChart';
 import { InventoryDonutChart } from '@/components/dashboard/InventoryDonutChart';
 import { MarketplaceBarChart } from '@/components/dashboard/MarketplaceBarChart';
 import { Top10SKUsTable } from '@/components/dashboard/Top10SKUsTable';
-import { Button } from '@/components/ui/Button';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
 
@@ -95,31 +93,11 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, [fromDate, toDate]);
 
-  const handleSeedData = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/seed-dashboard', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!response.ok) throw new Error('Failed to seed data');
-      showToast({
-        type: 'success',
-        message: 'Data contoh berhasil ditambahkan',
-      });
-      await fetchDashboardData();
-    } catch (error) {
-      showToast({
-        type: 'error',
-        message: 'Gagal menambahkan data contoh',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+    <div
+      className="flex-1 flex flex-col min-h-0 overflow-y-auto"
+      style={{ backgroundColor: colors.neutral.bg }}
+    >
       {/* Header with date filters */}
       <div
         style={{
@@ -170,8 +148,9 @@ export default function DashboardPage() {
         <div
           style={{
             display: 'flex',
-            gap: '16px',
+            gap: '12px',
             alignItems: 'flex-end',
+            flexWrap: 'wrap',
           }}
         >
           {/* From Date */}
@@ -231,26 +210,14 @@ export default function DashboardPage() {
               }}
             />
           </div>
-
-          {/* Seed Data Button */}
-          <Button
-            variant="secondary"
-            onClick={handleSeedData}
-            disabled={loading}
-            style={{ minWidth: '140px' }}
-          >
-            Seed Contoh
-          </Button>
         </div>
       </div>
 
       {/* Main content */}
       <div
         style={{
-          flex: 1,
           backgroundColor: colors.neutral.bg,
           padding: 'clamp(16px, 4vw, 24px)',
-          overflowY: 'auto',
         }}
       >
         {loading && !data ? (

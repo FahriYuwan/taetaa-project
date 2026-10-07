@@ -7,7 +7,9 @@ import { AddSaleModal } from '@/components/modals/AddSaleModal';
 import { BulkSaleModal } from '@/components/modals/BulkSaleModal';
 import { ScannerModal } from '@/components/modals/ScannerModal';
 import { EditSaleFinancialModal } from '@/components/modals/EditSaleFinancialModal';
+import { DiscrepancyModal } from '@/components/modals/DiscrepancyModal';
 import { ConfirmDialog } from '@/components/modals/ConfirmDialog';
+import { SaleDetailDrawer } from '@/components/modals/SaleDetailDrawer';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
 import {
@@ -20,6 +22,8 @@ import {
   FiCheck,
   FiX,
   FiMaximize2,
+  FiAlertTriangle,
+  FiEye,
 } from 'react-icons/fi';
 
 interface Sale {
@@ -75,12 +79,14 @@ const STATUS_BADGE: Record<string, string> = {
   TERKIRIM: 'bg-green-50 text-green-700 border-green-200',
   DIRETURN: 'bg-red-50 text-red-600 border-red-200',
   DIBATALKAN: 'bg-gray-100 text-gray-500 border-gray-200',
+  SELISIH_QTY: 'bg-amber-50 text-amber-700 border-amber-300',
 };
 
 const STATUS_LABEL: Record<string, string> = {
   TERKIRIM: 'Terkirim',
   DIRETURN: 'Direturn',
   DIBATALKAN: 'Dibatalkan',
+  SELISIH_QTY: '⚠️ Selisih Qty',
 };
 
 function formatRp(val: number) {
@@ -98,9 +104,11 @@ export default function PenjualanMarketplacePage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [showScannerModal, setShowScannerModal] = useState(false);
+  const [showDiscrepancyModal, setShowDiscrepancyModal] = useState(false);
   const [deletingSaleId, setDeletingSaleId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [editingFinancialSale, setEditingFinancialSale] = useState<Sale | null>(null);
+  const [selectedSaleForDetail, setSelectedSaleForDetail] = useState<Sale | null>(null);
   // Status editing inline
   const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
   const [editingStatus, setEditingStatus] = useState('');
@@ -201,6 +209,13 @@ export default function PenjualanMarketplacePage() {
     }
   }
 
+  useEffect(() => {
+    if (selectedSaleForDetail) {
+      const updated = sales.find((s) => s.id === selectedSaleForDetail.id);
+      if (updated) setSelectedSaleForDetail(updated);
+    }
+  }, [sales]);
+
   const filteredSales = useMemo(() => {
     if (!search.trim()) return sales;
     const term = search.toLowerCase();
@@ -249,6 +264,7 @@ export default function PenjualanMarketplacePage() {
   }, [filteredSales]);
 
   const unmatched = filteredSales.filter((s) => s.scannedByLogistic && !s.financeMatched).length;
+  const discrepancyCount = sales.filter((s) => s.status === 'SELISIH_QTY').length;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: colors.neutral.bg }}>
@@ -310,6 +326,7 @@ export default function PenjualanMarketplacePage() {
             >
               <option value="all">Semua Status</option>
               <option value="TERKIRIM">Terkirim</option>
+              <option value="SELISIH_QTY">Selisih Qty</option>
               <option value="DIRETURN">Direturn</option>
               <option value="DIBATALKAN">Dibatalkan</option>
             </select>
@@ -342,14 +359,41 @@ export default function PenjualanMarketplacePage() {
       />
 
       <div className="flex-1 overflow-auto p-4 md:p-6 space-y-4">
+        {/* Alert: Discrepancy (SELISIH QTY) — highest priority */}
+        {discrepancyCount > 0 && (
+          <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border bg-amber-50 border-amber-300 text-amber-800 text-sm">
+            <div className="flex items-center gap-2">
+              <FiAlertTriangle size={16} className="text-amber-600 shrink-0" />
+              <span>
+                <strong>{discrepancyCount} transaksi</strong> memiliki selisih qty antara logistik dan finance.
+                Konfirmasi resolusi agar rekonsiliasi bisa diselesaikan.
+              </span>
+            </div>
+            <button
+              onClick={() => setShowDiscrepancyModal(true)}
+              className="shrink-0 px-3 py-1.5 text-xs font-bold bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors whitespace-nowrap"
+            >
+              Resolusi Sekarang →
+            </button>
+          </div>
+        )}
+
         {/* Alert: Unmatched scan data */}
         {unmatched > 0 && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl border bg-amber-50 border-amber-200 text-amber-800 text-sm">
-            <span className="text-lg">⚠️</span>
-            <span>
-              <strong>{unmatched} resi</strong> sudah discan logistik tapi belum ada data finance.
-              Gunakan <strong>Bulk Paste Finance</strong> untuk mencocokkan data.
-            </span>
+          <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border bg-blue-50 border-blue-200 text-blue-800 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-base">🔍</span>
+              <span>
+                <strong>{unmatched} resi</strong> sudah discan logistik tapi belum ada data finance.
+                Gunakan <strong>Bulk Paste Finance</strong> untuk mencocokkan data.
+              </span>
+            </div>
+            <button
+              onClick={() => setShowDiscrepancyModal(true)}
+              className="shrink-0 px-3 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+            >
+              Lihat Detail →
+            </button>
           </div>
         )}
 
@@ -379,24 +423,17 @@ export default function PenjualanMarketplacePage() {
         {/* Data Table */}
         <div className="rounded-xl border bg-white shadow-sm overflow-hidden" style={{ borderColor: colors.neutral.border }}>
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left" style={{ minWidth: '1400px' }}>
+            <table className="w-full text-xs text-left min-w-[920px]">
               <thead
-                className="bg-gray-50 border-b text-[10px] font-bold uppercase tracking-wider text-gray-500"
+                className="bg-gray-50/80 border-b text-[10px] font-bold uppercase tracking-wider text-gray-500"
                 style={{ borderColor: colors.neutral.border }}
               >
                 <tr>
-                  <th className="px-4 py-3 whitespace-nowrap">TANGGAL</th>
-                  <th className="px-4 py-3 whitespace-nowrap">MARKETPLACE</th>
+                  <th className="px-4 py-3 whitespace-nowrap">TANGGAL & CHANNEL</th>
                   <th className="px-4 py-3 whitespace-nowrap">NO. RESI / PESANAN</th>
-                  <th className="px-4 py-3 whitespace-nowrap">SKU PRODUK</th>
+                  <th className="px-4 py-3 whitespace-nowrap">PRODUK / SKU</th>
                   <th className="px-4 py-3 text-right whitespace-nowrap">QTY</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap">HARGA</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap">VOUCHER</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap">DISKON</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap">PLATFORM FEE</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap">SHIPPING FEE</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap">OMSET</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap">HPP</th>
+                  <th className="px-4 py-3 text-right whitespace-nowrap">OMSET (NET)</th>
                   <th className="px-4 py-3 text-right whitespace-nowrap">TOTAL HPP</th>
                   <th className="px-4 py-3 text-right whitespace-nowrap">LABA</th>
                   <th className="px-4 py-3 text-center whitespace-nowrap">STATUS</th>
@@ -406,13 +443,13 @@ export default function PenjualanMarketplacePage() {
               <tbody className="divide-y" style={{ borderColor: colors.neutral.border }}>
                 {loading ? (
                   <tr>
-                    <td colSpan={16} className="px-6 py-12 text-center text-gray-400">
+                    <td colSpan={9} className="px-6 py-12 text-center text-gray-400">
                       Memuat data penjualan...
                     </td>
                   </tr>
                 ) : orderGroups.length === 0 ? (
                   <tr>
-                    <td colSpan={16} className="px-6 py-16 text-center text-blue-500 font-medium">
+                    <td colSpan={9} className="px-6 py-16 text-center text-blue-500 font-medium">
                       Belum ada penjualan untuk kriteria ini.
                     </td>
                   </tr>
@@ -429,127 +466,132 @@ export default function PenjualanMarketplacePage() {
                           key={sale.id}
                           className={`transition-colors ${
                             isUnmatched
-                              ? 'bg-amber-50/50 hover:bg-amber-50'
+                              ? 'bg-amber-50/40 hover:bg-amber-50/70'
                               : sale.status === 'DIRETURN'
                               ? 'bg-red-50/30 hover:bg-red-50/50'
-                              : 'hover:bg-gray-50/80'
+                              : 'hover:bg-blue-50/20'
                           }`}
                         >
-                          {/* Grouped columns: only show on first row */}
+                          {/* Grouped: Tanggal & Channel */}
                           {isFirstInGroup ? (
-                            <>
-                              <td
-                                className="px-4 py-3 whitespace-nowrap font-medium text-gray-700 align-top"
-                                rowSpan={rowCount}
-                              >
+                            <td
+                              className="px-4 py-3 whitespace-nowrap align-top bg-white"
+                              rowSpan={rowCount}
+                            >
+                              <div className="font-semibold text-gray-900">
                                 {new Date(sale.date).toLocaleDateString('id-ID', {
                                   day: '2-digit',
                                   month: 'short',
-                                  year: '2-digit',
+                                  year: 'numeric',
                                 })}
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap align-top" rowSpan={rowCount}>
+                              </div>
+                              <div className="mt-1">
                                 <span
-                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${CHANNEL_BADGE[sale.channel] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}
+                                  className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${CHANNEL_BADGE[sale.channel] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}
                                 >
                                   {sale.channel}
                                 </span>
-                              </td>
-                              <td className="px-4 py-3 align-top" rowSpan={rowCount}>
-                                <div className="space-y-0.5">
-                                  <div className="flex items-center gap-1.5">
-                                    <span
-                                      className="font-mono text-xs font-bold text-gray-900 max-w-[150px] truncate"
-                                      title={`No. Resi: ${sale.resi || sale.orderId || '—'}`}
-                                    >
-                                      {sale.resi || sale.orderId || '—'}
-                                    </span>
-                                    {isUnmatched && (
-                                      <span
-                                        className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200 flex-shrink-0"
-                                        title="Belum ada data finance"
-                                      >
-                                        BELUM DICOCOK
-                                      </span>
-                                    )}
-                                    {sale.financeMatched && (
-                                      <span className="text-green-500 text-[10px] font-bold" title="Data finance sudah dicocokkan">✓</span>
-                                    )}
-                                  </div>
-                                  {sale.orderId && sale.resi && sale.orderId !== sale.resi && (
-                                    <p
-                                      className="text-[10px] text-gray-400 font-mono truncate max-w-[150px]"
-                                      title={`No. Pesanan: ${sale.orderId}`}
-                                    >
-                                      Ord: {sale.orderId}
-                                    </p>
-                                  )}
-                                </div>
-                              </td>
-                            </>
+                              </div>
+                            </td>
                           ) : null}
 
-                          {/* Per-item columns */}
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            {rowCount > 1 && (
-                              <span className="text-gray-300 mr-1.5">└</span>
-                            )}
-                            <span className="font-bold text-gray-900">{sale.sku.code}</span>
-                            <span className="block text-[11px] text-gray-400 ml-4">{sale.sku.name}</span>
-                            {sale.notes && (
-                              <span
-                                className={`inline-block mt-1 ml-4 px-2 py-0.5 rounded text-[10px] font-bold ${
-                                  sale.notes.includes('SELISIH QTY')
-                                    ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                                    : 'bg-gray-100 text-gray-600 border border-gray-200'
-                                }`}
-                              >
-                                {sale.notes}
-                              </span>
-                            )}
+                          {/* Grouped: No. Resi & Pesanan */}
+                          {isFirstInGroup ? (
+                            <td className="px-4 py-3 align-top bg-white" rowSpan={rowCount}>
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span
+                                    className="font-mono text-xs font-bold text-gray-900 max-w-[150px] truncate block"
+                                    title={`No. Resi: ${sale.resi || sale.orderId || '—'}`}
+                                  >
+                                    {sale.resi || sale.orderId || '—'}
+                                  </span>
+                                  {isUnmatched && (
+                                    <span
+                                      className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200 flex-shrink-0"
+                                      title="Belum ada data finance"
+                                    >
+                                      BELUM COCOK
+                                    </span>
+                                  )}
+                                  {sale.financeMatched && (
+                                    <span className="text-green-600 text-[11px] font-bold" title="Data finance sudah dicocokkan">✓</span>
+                                  )}
+                                </div>
+                                {sale.orderId && sale.resi && sale.orderId !== sale.resi && (
+                                  <p
+                                    className="text-[10px] text-gray-400 font-mono truncate max-w-[150px]"
+                                    title={`No. Pesanan: ${sale.orderId}`}
+                                  >
+                                    Ord: {sale.orderId}
+                                  </p>
+                                )}
+                              </div>
+                            </td>
+                          ) : null}
+
+                          {/* Per-item: Produk / SKU */}
+                          <td className="px-4 py-3">
+                            <div className="flex items-start gap-1.5">
+                              {rowCount > 1 && (
+                                <span className="text-gray-300 font-mono select-none">└</span>
+                              )}
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <button
+                                    onClick={() => setSelectedSaleForDetail(sale)}
+                                    className="font-bold text-gray-900 hover:text-blue-600 transition-colors text-left"
+                                    title="Klik untuk lihat detail transaksi"
+                                  >
+                                    {sale.sku.code}
+                                  </button>
+                                  {sale.notes && sale.notes.includes('SELISIH') ? (
+                                    <button
+                                      onClick={() => setSelectedSaleForDetail(sale)}
+                                      className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 transition-colors cursor-pointer"
+                                      title={sale.notes}
+                                    >
+                                      ⚠️ Selisih
+                                    </button>
+                                  ) : sale.notes ? (
+                                    <span
+                                      className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gray-100 text-gray-600 border border-gray-200 truncate max-w-[130px] inline-block"
+                                      title={sale.notes}
+                                    >
+                                      {sale.notes}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <span className="block text-[11px] text-gray-500 truncate max-w-[210px]" title={sale.sku.name}>
+                                  {sale.sku.name}
+                                </span>
+                              </div>
+                            </div>
                           </td>
 
-                          <td className="px-4 py-3 text-right font-bold text-gray-900">{sale.qty}</td>
-
-                          <td className="px-4 py-3 text-right text-gray-600">
-                            {sale.unitPrice > 0 ? formatRp(sale.unitPrice) : <span className="text-gray-300">—</span>}
+                          {/* QTY */}
+                          <td className="px-4 py-3 text-right font-bold text-gray-900 whitespace-nowrap">
+                            {sale.qty}
                           </td>
 
-                          <td className="px-4 py-3 text-right text-red-400">
-                            {sale.voucher > 0 ? `- ${formatRp(sale.voucher)}` : <span className="text-gray-300">—</span>}
-                          </td>
-
-                          <td className="px-4 py-3 text-right text-red-400">
-                            {sale.discount > 0 ? `- ${formatRp(sale.discount)}` : <span className="text-gray-300">—</span>}
-                          </td>
-
-                          <td className="px-4 py-3 text-right text-red-400">
-                            {sale.platformFee > 0 ? `- ${formatRp(sale.platformFee)}` : <span className="text-gray-300">—</span>}
-                          </td>
-
-                          <td className="px-4 py-3 text-right text-red-400">
-                            {sale.shippingFee > 0 ? `- ${formatRp(sale.shippingFee)}` : <span className="text-gray-300">—</span>}
-                          </td>
-
-                          <td className="px-4 py-3 text-right font-bold" style={{ color: colors.brand[500] }}>
+                          {/* OMSET (Net) */}
+                          <td className="px-4 py-3 text-right font-bold whitespace-nowrap" style={{ color: colors.brand[500] }}>
                             {(sale.omset || sale.netRevenue) > 0
                               ? formatRp(sale.omset || sale.netRevenue)
                               : <span className="text-gray-300">—</span>}
                           </td>
 
-                          <td className="px-4 py-3 text-right text-orange-600">
-                            {sale.hpp > 0 ? formatRp(sale.hpp) : <span className="text-gray-300">—</span>}
-                          </td>
-
-                          <td className="px-4 py-3 text-right text-orange-600 font-medium">
+                          {/* TOTAL HPP */}
+                          <td className="px-4 py-3 text-right text-orange-600 font-medium whitespace-nowrap">
                             {sale.totalHpp > 0 ? formatRp(sale.totalHpp) : <span className="text-gray-300">—</span>}
                           </td>
 
-                          <td className={`px-4 py-3 text-right font-bold ${(sale.laba || 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                          {/* LABA */}
+                          <td className={`px-4 py-3 text-right font-bold whitespace-nowrap ${(sale.laba || 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                             {sale.laba !== 0 ? formatRp(sale.laba) : <span className="text-gray-300">—</span>}
                           </td>
 
-                          {/* Status */}
+                          {/* STATUS */}
                           <td className="px-4 py-3 text-center whitespace-nowrap">
                             {isEditingStatus ? (
                               <div className="flex items-center gap-1 justify-center">
@@ -567,7 +609,7 @@ export default function PenjualanMarketplacePage() {
                                 <button
                                   onClick={() => saveStatus(sale.id)}
                                   disabled={isSavingStatus}
-                                  className="text-green-600 hover:text-green-800 p-1"
+                                  className="text-green-600 hover:text-green-800 p-1 cursor-pointer"
                                   title="Simpan"
                                 >
                                   <FiCheck size={13} />
@@ -575,7 +617,7 @@ export default function PenjualanMarketplacePage() {
                                 <button
                                   onClick={() => setEditingStatusId(null)}
                                   disabled={isSavingStatus}
-                                  className="text-gray-400 hover:text-gray-600 p-1"
+                                  className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
                                   title="Batal"
                                 >
                                   <FiX size={13} />
@@ -584,7 +626,7 @@ export default function PenjualanMarketplacePage() {
                             ) : (
                               <button
                                 onClick={() => startEditStatus(sale)}
-                                className="inline-flex items-center gap-1 group"
+                                className="inline-flex items-center gap-1 group cursor-pointer"
                                 title="Klik untuk ubah status"
                               >
                                 <span
@@ -597,9 +639,17 @@ export default function PenjualanMarketplacePage() {
                             )}
                           </td>
 
-                          {/* Actions */}
+                          {/* AKSI */}
                           <td className="px-4 py-3 text-center whitespace-nowrap">
-                            <div className="flex items-center justify-center gap-1.5">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => setSelectedSaleForDetail(sale)}
+                                className="px-2 py-1 rounded text-[11px] font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-blue-200 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                title="Buka Detail Transaksi & Breakdown Finansial"
+                              >
+                                <FiEye size={12} />
+                                <span>Detail</span>
+                              </button>
                               <button
                                 onClick={() => setEditingFinancialSale(sale)}
                                 className="text-gray-400 hover:text-blue-600 p-1.5 rounded hover:bg-blue-50 transition-colors cursor-pointer"
@@ -630,15 +680,13 @@ export default function PenjualanMarketplacePage() {
                   style={{ borderColor: colors.neutral.border }}
                 >
                   <tr>
-                    <td colSpan={4} className="px-4 py-3 text-gray-800 uppercase tracking-wider">
+                    <td colSpan={3} className="px-4 py-3 text-gray-800 uppercase tracking-wider">
                       TOTAL ({orderGroups.length} Resi · {filteredSales.length} Item)
                     </td>
                     <td className="px-4 py-3 text-right text-gray-900">{totals.qty.toLocaleString('id-ID')}</td>
-                    <td colSpan={5} className="px-4 py-3 text-right text-gray-400">—</td>
                     <td className="px-4 py-3 text-right" style={{ color: colors.brand[500] }}>
                       {formatRp(totals.omset)}
                     </td>
-                    <td className="px-4 py-3 text-right text-orange-600">—</td>
                     <td className="px-4 py-3 text-right text-orange-600">
                       {formatRp(totals.totalHpp)}
                     </td>
@@ -654,7 +702,29 @@ export default function PenjualanMarketplacePage() {
         </div>
       </div>
 
-      {/* Modals */}
+      {/* Modals & Drawers */}
+      <SaleDetailDrawer
+        isOpen={!!selectedSaleForDetail}
+        sale={selectedSaleForDetail}
+        onClose={() => setSelectedSaleForDetail(null)}
+        onEditFinancial={(sale) => {
+          setSelectedSaleForDetail(null);
+          setEditingFinancialSale(sale);
+        }}
+        onEditStatus={(sale) => {
+          setSelectedSaleForDetail(null);
+          startEditStatus(sale);
+        }}
+        onResolveDiscrepancy={() => {
+          setSelectedSaleForDetail(null);
+          setShowDiscrepancyModal(true);
+        }}
+        onDelete={(saleId) => {
+          setSelectedSaleForDetail(null);
+          setDeletingSaleId(saleId);
+        }}
+      />
+
       <ScannerModal
         isOpen={showScannerModal}
         onClose={() => setShowScannerModal(false)}
@@ -683,6 +753,12 @@ export default function PenjualanMarketplacePage() {
         sale={editingFinancialSale}
         onClose={() => setEditingFinancialSale(null)}
         onSuccess={fetchSales}
+      />
+
+      <DiscrepancyModal
+        isOpen={showDiscrepancyModal}
+        onClose={() => setShowDiscrepancyModal(false)}
+        onResolved={fetchSales}
       />
 
       <ConfirmDialog

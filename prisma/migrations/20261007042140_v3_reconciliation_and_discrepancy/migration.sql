@@ -1,0 +1,30 @@
+-- CreateEnum
+CREATE TYPE "SaleStatus" AS ENUM ('TERKIRIM', 'DIRETURN', 'DIBATALKAN', 'SELISIH_QTY');
+
+-- AlterEnum
+ALTER TYPE "Channel" ADD VALUE 'TOKOPEDIA';
+
+-- AlterTable
+ALTER TABLE "Sale" ADD COLUMN     "discount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN     "financeMatched" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "hasDiscrepancy" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "hpp" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN     "laba" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN     "omset" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN     "platformFee" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN     "resi" TEXT,
+ADD COLUMN     "scannedByLogistic" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "shippingFee" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN     "status" "SaleStatus" NOT NULL DEFAULT 'TERKIRIM',
+ADD COLUMN     "totalHpp" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN     "voucher" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ALTER COLUMN "unitPrice" SET DEFAULT 0;
+
+-- CreateIndex
+CREATE INDEX "Sale_orderId_idx" ON "Sale"("orderId");
+
+-- CreateIndex
+CREATE INDEX "Sale_resi_idx" ON "Sale"("resi");
+
+-- CreateIndex
+CREATE INDEX "Sale_hasDiscrepancy_idx" ON "Sale"("hasDiscrepancy");

@@ -24,6 +24,9 @@ export async function GET(
         },
         inputs: {
           include: { inputSku: true }
+        },
+        kemasanInputs: {
+          include: { kemasan: true }
         }
       }
     });

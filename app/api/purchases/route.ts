@@ -1,10 +1,29 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { MovementType } from '@prisma/client';
+import { validateBody, createPurchaseSchema } from '@/lib/validations';
 
 export async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url);
+    const from = searchParams.get('from');
+    const to = searchParams.get('to');
+
+    const where: any = {};
+    if (from || to) {
+      where.date = {};
+      if (from) {
+        where.date.gte = new Date(from);
+      }
+      if (to) {
+        const toDateObj = new Date(to);
+        toDateObj.setHours(23, 59, 59, 999);
+        where.date.lte = toDateObj;
+      }
+    }
+
     const purchases = await prisma.purchase.findMany({
+      where,
       include: { sku: true },
       orderBy: { date: 'desc' },
     });
@@ -17,11 +36,12 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { date, skuId, qty, unitPrice, supplier, notes } = body;
-
-    if (!date || !skuId || !qty || !unitPrice) {
-      return NextResponse.json({ error: 'Terdapat Field yang belum diisi!' }, { status: 400 });
+    const validation = validateBody(createPurchaseSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error, details: validation.issues }, { status: 400 });
     }
+
+    const { date, skuId, qty, unitPrice, supplier, notes } = validation.data;
 
     const total = qty * unitPrice;
 

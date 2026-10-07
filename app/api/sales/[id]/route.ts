@@ -94,6 +94,16 @@ export async function PATCH(
             reference: sale.id,
           },
         });
+
+        // Create a structured Return record
+        await tx.return.create({
+          data: {
+            date: new Date(),
+            saleId: sale.id,
+            qty: sale.qty,
+            reason: body.notes || 'Retur pesanan marketplace',
+          },
+        });
       }
 
       // Handle reverting from DIRETURN to TERKIRIM
@@ -111,10 +121,15 @@ export async function PATCH(
             type: MovementType.RETURN,
           },
         });
+
+        // Remove the Return record
+        await tx.return.deleteMany({
+          where: { saleId: sale.id },
+        });
       }
 
       // Build update data
-      const updateData: any = {};
+      const updateData: Record<string, unknown> = {};
       if (body.status !== undefined) updateData.status = body.status;
       if (body.orderId !== undefined) updateData.orderId = body.orderId;
       if (body.resi !== undefined) updateData.resi = body.resi;
