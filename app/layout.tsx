@@ -1,13 +1,19 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { SidebarProvider } from "@/components/sidebar/SidebarContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ToastContainer } from "@/lib/toast";
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
   title: "Taetaa - Inventory Management",
   description: "Inventory and production management system",
-  viewport: "width=device-width, initial-scale=1",
   icons: {
     icon: "/logo.png",
     shortcut: "/logo.png",

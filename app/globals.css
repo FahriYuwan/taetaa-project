@@ -12,17 +12,23 @@
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
+  height: 100%;
 }
 
-/* Mobile: prevent horizontal overflow at page level */
+/* Mobile & Tablet: dynamic viewport height & prevent horizontal overflow */
 body {
   overflow-x: hidden;
+  min-height: 100%;
+  min-height: 100dvh;
 }
 
-/* Table: ensure horizontal scroll on small screens */
-.table-container {
+/* Table & container: ensure smooth touch scroll on mobile and tablet */
+.table-container,
+.overflow-x-auto {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  overscroll-behavior-x: contain;
 }
 
 /* KPI grid responsive override */

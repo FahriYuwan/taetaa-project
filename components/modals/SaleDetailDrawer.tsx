@@ -145,7 +145,7 @@ export function SaleDetailDrawer({
 
       {/* Drawer Panel */}
       <aside
-        className="relative w-full max-w-lg bg-white shadow-2xl flex flex-col h-full z-10 overflow-hidden transition-transform duration-300 ease-out"
+        className="relative w-full max-w-lg bg-white shadow-2xl flex flex-col h-full max-h-[100dvh] z-10 overflow-hidden transition-transform duration-300 ease-out"
         role="dialog"
         aria-modal="true"
         aria-labelledby="drawer-title"
@@ -236,15 +236,15 @@ export function SaleDetailDrawer({
               </div>
 
               {sale.resi && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500 font-medium">Nomor Resi:</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-xs font-bold text-gray-900 bg-white px-2 py-1 rounded border border-gray-200">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-gray-500 font-medium shrink-0">Nomor Resi:</span>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="font-mono text-xs font-bold text-gray-900 bg-white px-2 py-1 rounded border border-gray-200 truncate max-w-[190px] sm:max-w-xs">
                       {sale.resi}
                     </span>
                     <button
                       onClick={() => copyToClipboard(sale.resi!, 'resi')}
-                      className="p-1 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                      className="p-1 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer shrink-0"
                       title="Salin Resi"
                     >
                       {copiedKey === 'resi' ? <FiCheck size={14} className="text-emerald-500" /> : <FiCopy size={14} />}
@@ -254,10 +254,10 @@ export function SaleDetailDrawer({
               )}
 
               {sale.orderId && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500 font-medium">Order Code:</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-xs text-gray-700 bg-white px-2 py-1 rounded border border-gray-200">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-gray-500 font-medium shrink-0">Order Code:</span>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="font-mono text-xs text-gray-700 bg-white px-2 py-1 rounded border border-gray-200 truncate max-w-[190px] sm:max-w-xs">
                       {sale.orderId}
                     </span>
                     <button

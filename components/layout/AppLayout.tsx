@@ -11,7 +11,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const { alerts, isModalOpen, closeModal } = useRestockAlertsContext();
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-gray-50">
+    <div className="flex h-[100dvh] w-full max-w-[100vw] overflow-hidden bg-gray-50">
       {/* Sidebar untuk Desktop & Drawer Mobile */}
       <Sidebar />
 

@@ -39,11 +39,29 @@ export function NotificationBell() {
     if (!bellRef.current) return;
     const rect = bellRef.current.getBoundingClientRect();
     const gap = 8;
-    // Try to place to the right-align with button; if it overflows right edge, shift left
-    let left = rect.right - PANEL_WIDTH;
+    const panelW = Math.min(PANEL_WIDTH, window.innerWidth - 16);
+
+    // If button is on the left side (e.g. sidebar header), open aligned to button left
+    let left: number;
+    if (rect.left < PANEL_WIDTH) {
+      left = Math.max(8, rect.left);
+    } else {
+      left = rect.right - panelW;
+    }
+
+    // Keep within horizontal screen bounds
+    if (left + panelW > window.innerWidth - 8) {
+      left = window.innerWidth - 8 - panelW;
+    }
     if (left < 8) left = 8;
-    if (left + PANEL_WIDTH > window.innerWidth - 8) left = window.innerWidth - 8 - PANEL_WIDTH;
-    setPanelPos({ top: rect.bottom + gap, left });
+
+    // Check vertical bounds: avoid overflowing bottom of screen
+    let top = rect.bottom + gap;
+    if (top + 280 > window.innerHeight && rect.top > 280) {
+      top = Math.max(8, rect.top - gap - 280);
+    }
+
+    setPanelPos({ top, left });
   }, []);
 
   useEffect(() => {
@@ -51,9 +69,11 @@ export function NotificationBell() {
     updatePos();
     window.addEventListener('scroll', updatePos, true);
     window.addEventListener('resize', updatePos);
+    window.addEventListener('orientationchange', updatePos);
     return () => {
       window.removeEventListener('scroll', updatePos, true);
       window.removeEventListener('resize', updatePos);
+      window.removeEventListener('orientationchange', updatePos);
     };
   }, [isOpen, updatePos]);
 
@@ -101,7 +121,8 @@ export function NotificationBell() {
         position: 'fixed',
         top: panelPos.top,
         left: panelPos.left,
-        width: PANEL_WIDTH,
+        width: Math.min(PANEL_WIDTH, typeof window !== 'undefined' ? window.innerWidth - 16 : PANEL_WIDTH),
+        maxHeight: 'calc(100dvh - 32px)',
         backgroundColor: colors.neutral.card,
         borderRadius: '14px',
         border: `1px solid ${colors.neutral.border}`,

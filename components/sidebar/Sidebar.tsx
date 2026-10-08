@@ -44,6 +44,17 @@ export function Sidebar() {
     };
   }, [isMobileOpen]);
 
+  // Auto-close mobile drawer when rotating tablet to landscape (desktop breakpoint)
+  useEffect(() => {
+    function handleResize() {
+      if (window.innerWidth >= 1024 && isMobileOpen) {
+        closeMobile();
+      }
+    }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isMobileOpen, closeMobile]);
+
   const toggleSection = (label: string) => {
     setOpenSections((prev) => ({ ...prev, [label]: !prev[label] }));
   };
@@ -295,7 +306,7 @@ export function Sidebar() {
 
       {/* ── DESKTOP SIDEBAR (Bisa disembunyikan/slide keluar) ── */}
       <aside
-        className={`hidden lg:flex fixed left-0 top-0 h-screen w-56 border-r flex-col overflow-hidden z-30 transition-transform duration-300 ease-in-out shadow-xs ${
+        className={`hidden lg:flex fixed left-0 top-0 h-[100dvh] w-56 border-r flex-col overflow-hidden z-30 transition-transform duration-300 ease-in-out shadow-xs ${
           isDesktopOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         style={{ borderColor: colors.neutral.border, backgroundColor: colors.neutral.card }}
