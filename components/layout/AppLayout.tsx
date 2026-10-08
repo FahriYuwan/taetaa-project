@@ -3,9 +3,12 @@
 import { useSidebar } from '@/components/sidebar/SidebarContext';
 import { Sidebar } from '@/components/sidebar/Sidebar';
 import { TopBar } from '@/components/layout/TopBar';
+import { RestockAlertModal } from '@/components/modals/RestockAlertModal';
+import { RestockAlertsProvider, useRestockAlertsContext } from '@/components/layout/RestockAlertsContext';
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
+function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const { isDesktopOpen } = useSidebar();
+  const { alerts, isModalOpen, closeModal } = useRestockAlertsContext();
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-50">
@@ -26,6 +29,21 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      {/* Restock Alert Popup — muncul sekali per hari jika ada stok menipis */}
+      <RestockAlertModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        alerts={alerts}
+      />
     </div>
+  );
+}
+
+export function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <RestockAlertsProvider>
+      <AppLayoutInner>{children}</AppLayoutInner>
+    </RestockAlertsProvider>
   );
 }

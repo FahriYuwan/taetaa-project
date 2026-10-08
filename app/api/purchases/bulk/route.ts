@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { MovementType } from '@prisma/client';
+import { parseRupiahNumber } from '@/lib/finance';
 
 export async function POST(req: Request) {
   try {
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
 
         const date = new Date(dateStr.trim());
         const qty = parseFloat(qtyStr.trim());
-        const unitPrice = parseFloat(priceStr.trim().replace(/[^0-9.]/g, ''));
+        const unitPrice = parseRupiahNumber(priceStr);
         const total = qty * unitPrice;
 
         // 1. Create Purchase

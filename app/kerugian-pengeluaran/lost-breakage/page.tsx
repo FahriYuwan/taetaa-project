@@ -117,7 +117,7 @@ export default function LostBreakagePage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: colors.neutral.bg }}>
       <PageHeader
-        title="Lost & Breakage"
+        title="Barang Rusak & Hilang"
         subtitle="Catat barang rusak, hilang, atau gagal QC. Stok SKU akan otomatis berkurang."
         actions={
           <div className="flex gap-3">

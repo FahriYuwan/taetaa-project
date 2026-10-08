@@ -73,7 +73,7 @@ export async function POST(req: Request) {
             netRevenue: 0,
             hpp: hppTotal,
             totalHpp: hppTotal,
-            status: 'TERKIRIM' as any,
+            status: 'DITERIMA' as any,
             scannedByLogistic: true,
             financeMatched: false,
           },

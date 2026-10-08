@@ -242,10 +242,13 @@ export function AddEditSKUModal({
                   style={{ borderColor: colors.neutral.border, '--tw-ring-color': colors.brand[500] } as any}
                   disabled={isLoading}
                 >
-                  <option value="RAW">RAW (Bahan Baku)</option>
-                  <option value="PRODUCT">PRODUCT (Setengah Jadi)</option>
-                  <option value="PACKAGE">PACKAGE (Produk Jadi)</option>
+                  <option value="RAW">RAW (Bahan Baku Murni)</option>
+                  <option value="PRODUCT">PRODUCT (Olahan / Setengah Jadi)</option>
+                  <option value="PACKAGE">PACKAGE (Produk Jadi Siap Jual)</option>
                 </select>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  *Hanya tipe <span className="font-semibold text-gray-700">PACKAGE</span> yang dapat dijual di transaksi Penjualan.
+                </p>
               </div>
 
               <div>

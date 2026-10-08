@@ -93,7 +93,7 @@ export async function GET(request: Request) {
       }
 
       // Handle Returned orders
-      if (sale.status === 'DIRETURN') {
+      if (sale.status === 'RETURN' || sale.status === 'DIRETURN') {
         // Order direturn: Produk dikembalikan ke gudang (stok direstore, HPP bersih = 0)
         // Pembeli direfund sehingga omset = 0.
         // Biaya ongkir retur / fee marketplace yang tidak dapat dikembalikan diperhitungkan sebagai kerugian retur
@@ -103,6 +103,13 @@ export async function GET(request: Request) {
         } else {
           returnLoss += lossFromFee;
         }
+        return;
+      }
+
+      // Handle Lost orders
+      if (sale.status === 'HILANG') {
+        const saleHpp = resolveSaleHpp(sale, avgCost);
+        returnLoss += saleHpp + fee;
         return;
       }
 

@@ -13,85 +13,22 @@ import { SaleDetailDrawer } from '@/components/modals/SaleDetailDrawer';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
 import {
-  FiTrash2,
   FiPlus,
   FiClipboard,
   FiSearch,
-  FiBarChart,
-  FiEdit2,
-  FiCheck,
-  FiX,
   FiMaximize2,
   FiAlertTriangle,
-  FiEye,
+  FiList,
+  FiColumns,
 } from 'react-icons/fi';
-
-interface Sale {
-  id: string;
-  date: string;
-  channel: string;
-  orderId: string | null;
-  resi: string | null;
-  skuId: string;
-  sku: {
-    id?: string;
-    code: string;
-    name: string;
-    hppPrice?: number;
-  };
-  qty: number;
-  unitPrice: number;
-  total: number;
-  fee: number;
-  netRevenue: number;
-  voucher: number;
-  discount: number;
-  platformFee: number;
-  shippingFee: number;
-  omset: number;
-  hpp: number;
-  totalHpp: number;
-  laba: number;
-  status: string;
-  scannedByLogistic: boolean;
-  financeMatched: boolean;
-  notes: string | null;
-  avgCost?: number;
-}
-
-interface OrderGroup {
-  orderId: string | null;
-  resi: string | null;
-  channel: string;
-  date: string;
-  items: Sale[];
-}
-
-const CHANNEL_BADGE: Record<string, string> = {
-  SHOPEE: 'bg-orange-50 text-orange-600 border-orange-200',
-  TIKTOK: 'bg-gray-100 text-gray-800 border-gray-300',
-  TOKOPEDIA: 'bg-green-50 text-green-700 border-green-200',
-  OFFLINE: 'bg-blue-50 text-blue-600 border-blue-200',
-  AFFILIATE: 'bg-purple-50 text-purple-600 border-purple-200',
-};
-
-const STATUS_BADGE: Record<string, string> = {
-  TERKIRIM: 'bg-green-50 text-green-700 border-green-200',
-  DIRETURN: 'bg-red-50 text-red-600 border-red-200',
-  DIBATALKAN: 'bg-gray-100 text-gray-500 border-gray-200',
-  SELISIH_QTY: 'bg-amber-50 text-amber-700 border-amber-300',
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  TERKIRIM: 'Terkirim',
-  DIRETURN: 'Direturn',
-  DIBATALKAN: 'Dibatalkan',
-  SELISIH_QTY: '⚠️ Selisih Qty',
-};
-
-function formatRp(val: number) {
-  return `Rp ${(val || 0).toLocaleString('id-ID')}`;
-}
+import {
+  Sale,
+  OrderGroup,
+  MarketplaceTotals,
+  STATUS_LABEL,
+} from '@/components/penjualan/types';
+import { MarketplaceCompactTable } from '@/components/penjualan/MarketplaceCompactTable';
+import { MarketplaceDetailedTable } from '@/components/penjualan/MarketplaceDetailedTable';
 
 export default function PenjualanMarketplacePage() {
   const [sales, setSales] = useState<Sale[]>([]);
@@ -113,7 +50,20 @@ export default function PenjualanMarketplacePage() {
   const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
   const [editingStatus, setEditingStatus] = useState('');
   const [isSavingStatus, setIsSavingStatus] = useState(false);
+  const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('compact');
   const { showToast } = useToast();
+
+  useEffect(() => {
+    const saved = localStorage.getItem('marketplace_view_mode');
+    if (saved === 'compact' || saved === 'detailed') {
+      setViewMode(saved);
+    }
+  }, []);
+
+  const handleViewModeChange = (mode: 'compact' | 'detailed') => {
+    setViewMode(mode);
+    localStorage.setItem('marketplace_view_mode', mode);
+  };
 
   useEffect(() => {
     fetchSales();
@@ -184,21 +134,28 @@ export default function PenjualanMarketplacePage() {
     setEditingStatus(sale.status);
   }
 
-  async function saveStatus(saleId: string) {
+  async function saveStatus(saleId: string, newStatus?: string) {
+    const statusToSave = newStatus || editingStatus;
     setIsSavingStatus(true);
+    setEditingStatusId(saleId);
     try {
       const res = await fetch(`/api/sales/${saleId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: editingStatus }),
+        body: JSON.stringify({ status: statusToSave }),
       });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error);
       }
       showToast({
-        message: `Status diubah menjadi ${STATUS_LABEL[editingStatus]}`,
-        type: editingStatus === 'DIRETURN' ? 'error' : 'success',
+        message: `Status diubah menjadi ${STATUS_LABEL[statusToSave] ?? statusToSave}`,
+        type:
+          statusToSave === 'RETURN' || statusToSave === 'DIRETURN'
+            ? 'error'
+            : statusToSave === 'HILANG'
+            ? 'info'
+            : 'success',
       });
       setEditingStatusId(null);
       fetchSales();
@@ -206,6 +163,7 @@ export default function PenjualanMarketplacePage() {
       showToast({ message: error.message || 'Gagal mengubah status', type: 'error' });
     } finally {
       setIsSavingStatus(false);
+      setEditingStatusId(null);
     }
   }
 
@@ -250,16 +208,29 @@ export default function PenjualanMarketplacePage() {
     return Array.from(groups.values());
   }, [filteredSales]);
 
-  const totals = useMemo(() => {
+  const totals = useMemo<MarketplaceTotals>(() => {
     return filteredSales.reduce(
       (acc, s) => {
         acc.qty += s.qty || 0;
+        acc.voucher = (acc.voucher || 0) + (s.voucher || 0);
+        acc.discount = (acc.discount || 0) + (s.discount || 0);
+        acc.platformFee = (acc.platformFee || 0) + (s.platformFee || 0);
+        acc.shippingFee = (acc.shippingFee || 0) + (s.shippingFee || 0);
         acc.omset += s.omset || s.netRevenue || 0;
         acc.totalHpp += s.totalHpp || s.hpp || 0;
         acc.laba += s.laba || 0;
         return acc;
       },
-      { qty: 0, omset: 0, totalHpp: 0, laba: 0 }
+      {
+        qty: 0,
+        voucher: 0,
+        discount: 0,
+        platformFee: 0,
+        shippingFee: 0,
+        omset: 0,
+        totalHpp: 0,
+        laba: 0,
+      }
     );
   }, [filteredSales]);
 
@@ -325,10 +296,10 @@ export default function PenjualanMarketplacePage() {
               style={{ borderColor: colors.neutral.border }}
             >
               <option value="all">Semua Status</option>
-              <option value="TERKIRIM">Terkirim</option>
+              <option value="DITERIMA">Diterima</option>
+              <option value="HILANG">Hilang</option>
+              <option value="RETURN">Return</option>
               <option value="SELISIH_QTY">Selisih Qty</option>
-              <option value="DIRETURN">Direturn</option>
-              <option value="DIBATALKAN">Dibatalkan</option>
             </select>
 
             {/* Action Buttons */}
@@ -382,7 +353,7 @@ export default function PenjualanMarketplacePage() {
         {unmatched > 0 && (
           <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border bg-blue-50 border-blue-200 text-blue-800 text-sm">
             <div className="flex items-center gap-2">
-              <span className="text-base">🔍</span>
+              <FiSearch size={16} className="text-blue-600 shrink-0" />
               <span>
                 <strong>{unmatched} resi</strong> sudah discan logistik tapi belum ada data finance.
                 Gunakan <strong>Bulk Paste Finance</strong> untuk mencocokkan data.
@@ -397,7 +368,7 @@ export default function PenjualanMarketplacePage() {
           </div>
         )}
 
-        {/* Search & Count */}
+        {/* Search, View Mode Toggle & Count */}
         <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center justify-between gap-3">
           <div className="relative w-full sm:w-72">
             <FiSearch className="absolute left-3 top-2.5 text-gray-400" size={14} />
@@ -415,291 +386,82 @@ export default function PenjualanMarketplacePage() {
               </button>
             )}
           </div>
-          <div className="text-xs text-gray-500 font-medium">
-            <strong>{orderGroups.length}</strong> resi &nbsp;·&nbsp; <strong>{filteredSales.length}</strong> item
+
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+            {/* View Mode Toggle (Ringkas vs Detail) */}
+            <div
+              className="flex items-center p-0.5 rounded-lg border bg-white shadow-2xs gap-0.5"
+              style={{ borderColor: colors.neutral.border }}
+            >
+              <button
+                type="button"
+                onClick={() => handleViewModeChange('compact')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer ${
+                  viewMode === 'compact'
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+                title="Tampilan Ringkas (per Resi)"
+              >
+                <FiList size={14} className={viewMode === 'compact' ? 'text-blue-600' : 'text-gray-500'} />
+                <span>Ringkas</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleViewModeChange('detailed')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer ${
+                  viewMode === 'detailed'
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+                title="Tampilan Detail (Semua Kolom Finansial)"
+              >
+                <FiColumns size={14} className={viewMode === 'detailed' ? 'text-blue-600' : 'text-gray-500'} />
+                <span>Detail</span>
+              </button>
+            </div>
+
+            <div className="text-xs text-gray-500 font-medium whitespace-nowrap">
+              <strong>{orderGroups.length}</strong> resi &nbsp;·&nbsp; <strong>{filteredSales.length}</strong> item
+            </div>
           </div>
         </div>
 
         {/* Data Table */}
-        <div className="rounded-xl border bg-white shadow-sm overflow-hidden" style={{ borderColor: colors.neutral.border }}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left min-w-[920px]">
-              <thead
-                className="bg-gray-50/80 border-b text-[10px] font-bold uppercase tracking-wider text-gray-500"
-                style={{ borderColor: colors.neutral.border }}
-              >
-                <tr>
-                  <th className="px-4 py-3 whitespace-nowrap">TANGGAL & CHANNEL</th>
-                  <th className="px-4 py-3 whitespace-nowrap">NO. RESI / PESANAN</th>
-                  <th className="px-4 py-3 whitespace-nowrap">PRODUK / SKU</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap">QTY</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap">OMSET (NET)</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap">TOTAL HPP</th>
-                  <th className="px-4 py-3 text-right whitespace-nowrap">LABA</th>
-                  <th className="px-4 py-3 text-center whitespace-nowrap">STATUS</th>
-                  <th className="px-4 py-3 text-center whitespace-nowrap">AKSI</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y" style={{ borderColor: colors.neutral.border }}>
-                {loading ? (
-                  <tr>
-                    <td colSpan={9} className="px-6 py-12 text-center text-gray-400">
-                      Memuat data penjualan...
-                    </td>
-                  </tr>
-                ) : orderGroups.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="px-6 py-16 text-center text-blue-500 font-medium">
-                      Belum ada penjualan untuk kriteria ini.
-                    </td>
-                  </tr>
-                ) : (
-                  orderGroups.map((group) =>
-                    group.items.map((sale, itemIdx) => {
-                      const isFirstInGroup = itemIdx === 0;
-                      const rowCount = group.items.length;
-                      const isUnmatched = sale.scannedByLogistic && !sale.financeMatched;
-                      const isEditingStatus = editingStatusId === sale.id;
-
-                      return (
-                        <tr
-                          key={sale.id}
-                          className={`transition-colors ${
-                            isUnmatched
-                              ? 'bg-amber-50/40 hover:bg-amber-50/70'
-                              : sale.status === 'DIRETURN'
-                              ? 'bg-red-50/30 hover:bg-red-50/50'
-                              : 'hover:bg-blue-50/20'
-                          }`}
-                        >
-                          {/* Grouped: Tanggal & Channel */}
-                          {isFirstInGroup ? (
-                            <td
-                              className="px-4 py-3 whitespace-nowrap align-top bg-white"
-                              rowSpan={rowCount}
-                            >
-                              <div className="font-semibold text-gray-900">
-                                {new Date(sale.date).toLocaleDateString('id-ID', {
-                                  day: '2-digit',
-                                  month: 'short',
-                                  year: 'numeric',
-                                })}
-                              </div>
-                              <div className="mt-1">
-                                <span
-                                  className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${CHANNEL_BADGE[sale.channel] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}
-                                >
-                                  {sale.channel}
-                                </span>
-                              </div>
-                            </td>
-                          ) : null}
-
-                          {/* Grouped: No. Resi & Pesanan */}
-                          {isFirstInGroup ? (
-                            <td className="px-4 py-3 align-top bg-white" rowSpan={rowCount}>
-                              <div className="space-y-0.5">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span
-                                    className="font-mono text-xs font-bold text-gray-900 max-w-[150px] truncate block"
-                                    title={`No. Resi: ${sale.resi || sale.orderId || '—'}`}
-                                  >
-                                    {sale.resi || sale.orderId || '—'}
-                                  </span>
-                                  {isUnmatched && (
-                                    <span
-                                      className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200 flex-shrink-0"
-                                      title="Belum ada data finance"
-                                    >
-                                      BELUM COCOK
-                                    </span>
-                                  )}
-                                  {sale.financeMatched && (
-                                    <span className="text-green-600 text-[11px] font-bold" title="Data finance sudah dicocokkan">✓</span>
-                                  )}
-                                </div>
-                                {sale.orderId && sale.resi && sale.orderId !== sale.resi && (
-                                  <p
-                                    className="text-[10px] text-gray-400 font-mono truncate max-w-[150px]"
-                                    title={`No. Pesanan: ${sale.orderId}`}
-                                  >
-                                    Ord: {sale.orderId}
-                                  </p>
-                                )}
-                              </div>
-                            </td>
-                          ) : null}
-
-                          {/* Per-item: Produk / SKU */}
-                          <td className="px-4 py-3">
-                            <div className="flex items-start gap-1.5">
-                              {rowCount > 1 && (
-                                <span className="text-gray-300 font-mono select-none">└</span>
-                              )}
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <button
-                                    onClick={() => setSelectedSaleForDetail(sale)}
-                                    className="font-bold text-gray-900 hover:text-blue-600 transition-colors text-left"
-                                    title="Klik untuk lihat detail transaksi"
-                                  >
-                                    {sale.sku.code}
-                                  </button>
-                                  {sale.notes && sale.notes.includes('SELISIH') ? (
-                                    <button
-                                      onClick={() => setSelectedSaleForDetail(sale)}
-                                      className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 transition-colors cursor-pointer"
-                                      title={sale.notes}
-                                    >
-                                      ⚠️ Selisih
-                                    </button>
-                                  ) : sale.notes ? (
-                                    <span
-                                      className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gray-100 text-gray-600 border border-gray-200 truncate max-w-[130px] inline-block"
-                                      title={sale.notes}
-                                    >
-                                      {sale.notes}
-                                    </span>
-                                  ) : null}
-                                </div>
-                                <span className="block text-[11px] text-gray-500 truncate max-w-[210px]" title={sale.sku.name}>
-                                  {sale.sku.name}
-                                </span>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* QTY */}
-                          <td className="px-4 py-3 text-right font-bold text-gray-900 whitespace-nowrap">
-                            {sale.qty}
-                          </td>
-
-                          {/* OMSET (Net) */}
-                          <td className="px-4 py-3 text-right font-bold whitespace-nowrap" style={{ color: colors.brand[500] }}>
-                            {(sale.omset || sale.netRevenue) > 0
-                              ? formatRp(sale.omset || sale.netRevenue)
-                              : <span className="text-gray-300">—</span>}
-                          </td>
-
-                          {/* TOTAL HPP */}
-                          <td className="px-4 py-3 text-right text-orange-600 font-medium whitespace-nowrap">
-                            {sale.totalHpp > 0 ? formatRp(sale.totalHpp) : <span className="text-gray-300">—</span>}
-                          </td>
-
-                          {/* LABA */}
-                          <td className={`px-4 py-3 text-right font-bold whitespace-nowrap ${(sale.laba || 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                            {sale.laba !== 0 ? formatRp(sale.laba) : <span className="text-gray-300">—</span>}
-                          </td>
-
-                          {/* STATUS */}
-                          <td className="px-4 py-3 text-center whitespace-nowrap">
-                            {isEditingStatus ? (
-                              <div className="flex items-center gap-1 justify-center">
-                                <select
-                                  value={editingStatus}
-                                  onChange={(e) => setEditingStatus(e.target.value)}
-                                  className="text-xs px-2 py-1 border rounded"
-                                  style={{ borderColor: colors.neutral.border }}
-                                  disabled={isSavingStatus}
-                                >
-                                  <option value="TERKIRIM">Terkirim</option>
-                                  <option value="DIRETURN">Direturn</option>
-                                  <option value="DIBATALKAN">Dibatalkan</option>
-                                </select>
-                                <button
-                                  onClick={() => saveStatus(sale.id)}
-                                  disabled={isSavingStatus}
-                                  className="text-green-600 hover:text-green-800 p-1 cursor-pointer"
-                                  title="Simpan"
-                                >
-                                  <FiCheck size={13} />
-                                </button>
-                                <button
-                                  onClick={() => setEditingStatusId(null)}
-                                  disabled={isSavingStatus}
-                                  className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
-                                  title="Batal"
-                                >
-                                  <FiX size={13} />
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => startEditStatus(sale)}
-                                className="inline-flex items-center gap-1 group cursor-pointer"
-                                title="Klik untuk ubah status"
-                              >
-                                <span
-                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${STATUS_BADGE[sale.status] ?? 'bg-gray-100 text-gray-500 border-gray-200'}`}
-                                >
-                                  {STATUS_LABEL[sale.status] ?? sale.status}
-                                </span>
-                                <FiEdit2 size={10} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
-                              </button>
-                            )}
-                          </td>
-
-                          {/* AKSI */}
-                          <td className="px-4 py-3 text-center whitespace-nowrap">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => setSelectedSaleForDetail(sale)}
-                                className="px-2 py-1 rounded text-[11px] font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-blue-200 transition-colors inline-flex items-center gap-1 cursor-pointer"
-                                title="Buka Detail Transaksi & Breakdown Finansial"
-                              >
-                                <FiEye size={12} />
-                                <span>Detail</span>
-                              </button>
-                              <button
-                                onClick={() => setEditingFinancialSale(sale)}
-                                className="text-gray-400 hover:text-blue-600 p-1.5 rounded hover:bg-blue-50 transition-colors cursor-pointer"
-                                title="Edit Nilai Finansial (Harga, Voucher, Fee)"
-                              >
-                                <FiEdit2 size={13} />
-                              </button>
-                              <button
-                                onClick={() => setDeletingSaleId(sale.id)}
-                                className="text-gray-300 hover:text-red-500 p-1.5 rounded hover:bg-red-50 transition-colors cursor-pointer"
-                                title="Hapus Penjualan"
-                              >
-                                <FiTrash2 size={13} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )
-                )}
-              </tbody>
-
-              {/* Totals Footer */}
-              {filteredSales.length > 0 && (
-                <tfoot
-                  className="bg-gray-50/90 border-t-2 font-bold text-xs"
-                  style={{ borderColor: colors.neutral.border }}
-                >
-                  <tr>
-                    <td colSpan={3} className="px-4 py-3 text-gray-800 uppercase tracking-wider">
-                      TOTAL ({orderGroups.length} Resi · {filteredSales.length} Item)
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-900">{totals.qty.toLocaleString('id-ID')}</td>
-                    <td className="px-4 py-3 text-right" style={{ color: colors.brand[500] }}>
-                      {formatRp(totals.omset)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-orange-600">
-                      {formatRp(totals.totalHpp)}
-                    </td>
-                    <td className={`px-4 py-3 text-right ${totals.laba >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                      {formatRp(totals.laba)}
-                    </td>
-                    <td colSpan={2} />
-                  </tr>
-                </tfoot>
-              )}
-            </table>
-          </div>
-        </div>
+        {viewMode === 'compact' ? (
+          <MarketplaceCompactTable
+            orderGroups={orderGroups}
+            filteredSalesCount={filteredSales.length}
+            loading={loading}
+            totals={totals}
+            editingStatusId={editingStatusId}
+            editingStatus={editingStatus}
+            isSavingStatus={isSavingStatus}
+            onStartEditStatus={startEditStatus}
+            onSaveStatus={saveStatus}
+            onCancelEditStatus={() => setEditingStatusId(null)}
+            onChangeEditingStatus={setEditingStatus}
+            onSelectSaleForDetail={setSelectedSaleForDetail}
+            onEditFinancial={setEditingFinancialSale}
+            onDeleteSale={setDeletingSaleId}
+          />
+        ) : (
+          <MarketplaceDetailedTable
+            sales={filteredSales}
+            loading={loading}
+            totals={totals}
+            editingStatusId={editingStatusId}
+            editingStatus={editingStatus}
+            isSavingStatus={isSavingStatus}
+            onStartEditStatus={startEditStatus}
+            onSaveStatus={saveStatus}
+            onCancelEditStatus={() => setEditingStatusId(null)}
+            onChangeEditingStatus={setEditingStatus}
+            onSelectSaleForDetail={setSelectedSaleForDetail}
+            onEditFinancial={setEditingFinancialSale}
+            onDeleteSale={setDeletingSaleId}
+          />
+        )}
       </div>
 
       {/* Modals & Drawers */}
@@ -711,9 +473,10 @@ export default function PenjualanMarketplacePage() {
           setSelectedSaleForDetail(null);
           setEditingFinancialSale(sale);
         }}
-        onEditStatus={(sale) => {
-          setSelectedSaleForDetail(null);
-          startEditStatus(sale);
+        onEditStatus={(sale, newStatus) => {
+          if (newStatus) {
+            saveStatus(sale.id, newStatus);
+          }
         }}
         onResolveDiscrepancy={() => {
           setSelectedSaleForDetail(null);

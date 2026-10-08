@@ -280,22 +280,22 @@ async function main() {
 
   console.log('--- SEEDING SALES (PURE MARKETPLACE CHANNELS) ---');
   const sales = [
-    { date: '2026-09-07', channel: Channel.SHOPEE, skuId: sbn1Pbg.id, qty: 10, unitPrice: 25000, fee: 2000, orderId: 'SHP-101', resi: 'JP-SHP-101', netRevenue: 248000, total: 250000, status: SaleStatus.TERKIRIM, scannedByLogistic: true, financeMatched: true },
-    { date: '2026-09-08', channel: Channel.TIKTOK, skuId: sbn2Pcf.id, qty: 15, unitPrice: 15000, fee: 1500, orderId: 'TT-201', resi: 'JP-TT-201', netRevenue: 223500, total: 225000, status: SaleStatus.TERKIRIM, scannedByLogistic: true, financeMatched: true },
-    { date: '2026-09-08', channel: Channel.OFFLINE, skuId: sbn3Pvl.id, qty: 5, unitPrice: 5000, fee: 0, orderId: 'OFF-301', resi: null, netRevenue: 25000, total: 25000, status: SaleStatus.TERKIRIM, scannedByLogistic: false, financeMatched: true },
-    { date: '2026-09-09', channel: Channel.SHOPEE, skuId: sbn1Pbg.id, qty: 5, unitPrice: 25000, fee: 1000, orderId: 'SHP-102', resi: 'JP-SHP-102', netRevenue: 124000, total: 125000, status: SaleStatus.TERKIRIM, scannedByLogistic: true, financeMatched: true },
+    { date: '2026-09-07', channel: Channel.SHOPEE, skuId: sbn1Pbg.id, qty: 10, unitPrice: 25000, fee: 2000, orderId: 'SHP-101', resi: 'JP-SHP-101', netRevenue: 248000, total: 250000, status: SaleStatus.DITERIMA, scannedByLogistic: true, financeMatched: true },
+    { date: '2026-09-08', channel: Channel.TIKTOK, skuId: sbn2Pcf.id, qty: 15, unitPrice: 15000, fee: 1500, orderId: 'TT-201', resi: 'JP-TT-201', netRevenue: 223500, total: 225000, status: SaleStatus.DITERIMA, scannedByLogistic: true, financeMatched: true },
+    { date: '2026-09-08', channel: Channel.OFFLINE, skuId: sbn3Pvl.id, qty: 5, unitPrice: 5000, fee: 0, orderId: 'OFF-301', resi: null, netRevenue: 25000, total: 25000, status: SaleStatus.DITERIMA, scannedByLogistic: false, financeMatched: true },
+    { date: '2026-09-09', channel: Channel.SHOPEE, skuId: sbn1Pbg.id, qty: 5, unitPrice: 25000, fee: 1000, orderId: 'SHP-102', resi: 'JP-SHP-102', netRevenue: 124000, total: 125000, status: SaleStatus.DITERIMA, scannedByLogistic: true, financeMatched: true },
     // Sample Transaksi Discrepancy (Mendemonstrasikan status SELISIH_QTY & Resolusi ADR 0001)
     { date: '2026-09-09', channel: Channel.SHOPEE, skuId: sbn2Pcf.id, qty: 5, unitPrice: 15000, fee: 0, orderId: 'SHP-SELISIH-01', resi: 'JP-DISCREP-01', netRevenue: 75000, total: 75000, status: SaleStatus.SELISIH_QTY, hasDiscrepancy: true, scannedByLogistic: true, financeMatched: false, notes: '⚠️ SELISIH QTY: Logistik scan 5 unit, Finance lapor 3 unit. Menunggu konfirmasi resolusi.' },
-    // Sample Transaksi Retur (Mendemonstrasikan status DIRETURN & Relasi Sale -> Return)
-    { date: '2026-09-09', channel: Channel.TIKTOK, skuId: sbn1Pbg.id, qty: 1, unitPrice: 25000, fee: 0, orderId: 'TT-RETUR-01', resi: 'JP-RETUR-01', netRevenue: 0, total: 25000, status: SaleStatus.DIRETURN, scannedByLogistic: true, financeMatched: false, notes: 'Barang diretur customer karena botol retak' }
+    // Sample Transaksi Return (Mendemonstrasikan status RETURN & Relasi Sale -> Return)
+    { date: '2026-09-09', channel: Channel.TIKTOK, skuId: sbn1Pbg.id, qty: 1, unitPrice: 25000, fee: 0, orderId: 'TT-RETUR-01', resi: 'JP-RETUR-01', netRevenue: 0, total: 25000, status: SaleStatus.RETURN, scannedByLogistic: true, financeMatched: false, notes: 'Barang return customer karena botol retak' }
   ];
 
   for (const s of sales) {
     const sale = await prisma.sale.create({
       data: { ...s, date: new Date(s.date) }
     });
-    // Jika DIRETURN, catat data audit ke tabel Return
-    if (s.status === SaleStatus.DIRETURN) {
+    // Jika RETURN, catat data audit ke tabel Return
+    if (s.status === SaleStatus.RETURN) {
       await prisma.return.create({
         data: {
           date: new Date(s.date),

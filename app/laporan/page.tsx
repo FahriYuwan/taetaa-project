@@ -27,13 +27,13 @@ export default function LaporanExportPage() {
     },
     {
       id: 'purchases',
-      title: 'Pembelian RAW',
+      title: 'Pembelian Bahan Baku',
       category: 'BERDASARKAN PERIODE' as const,
       description: 'Semua transaksi pembelian bahan baku',
     },
     {
       id: 'productions',
-      title: 'Produksi (RAW→PRODUCT)',
+      title: 'Produksi',
       category: 'BERDASARKAN PERIODE' as const,
       description: 'Riwayat konversi produksi & konsumsi BOM',
     },

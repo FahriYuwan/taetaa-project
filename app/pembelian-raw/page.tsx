@@ -99,7 +99,7 @@ export default function PembelianRawPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: colors.neutral.bg }}>
       <PageHeader
-        title="Pembelian RAW"
+        title="Pembelian Bahan Baku"
         subtitle="Catat pembelian bahan baku. Sistem otomatis update HPP rata-rata (Weighted Average)."
         actions={
           <div className="flex flex-wrap items-center gap-2.5 md:gap-3">

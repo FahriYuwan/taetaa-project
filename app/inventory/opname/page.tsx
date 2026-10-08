@@ -607,8 +607,8 @@ export default function StockOpnamePage() {
                 >
                   <option value="all">Semua Tipe</option>
                   <option value="RAW">RAW (Bahan Baku)</option>
-                  <option value="PRODUCT">PRODUCT (Barang Jadi)</option>
-                  <option value="PACKAGE">PACKAGE (Kemasan)</option>
+                  <option value="PRODUCT">PRODUCT (Setengah Jadi)</option>
+                  <option value="PACKAGE">PACKAGE (Produk Jadi Siap Jual)</option>
                 </select>
               </div>
 

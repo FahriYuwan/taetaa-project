@@ -105,7 +105,7 @@ export function Top10SKUsTable({ data }: Top10SKUsTableProps) {
                     color: colors.neutral.textMuted,
                   }}
                 >
-                  REVENUE
+                  OMSET
                 </th>
                 <th
                   style={{

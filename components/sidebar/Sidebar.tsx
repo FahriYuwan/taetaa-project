@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { colors } from '@/lib/theme';
 import { useSidebar } from '@/components/sidebar/SidebarContext';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 import {
   FiGrid,
   FiTag,
@@ -49,10 +50,12 @@ export function Sidebar() {
 
   const items = [
     { label: 'Dashboard', icon: <FiGrid size={16} />, href: '/dashboard' },
+    { section: 'Katalog & Operasional' },
     { label: 'Master SKU', icon: <FiTag size={16} />, href: '/master-sku' },
     { label: 'Master Kemasan', icon: <FiBox size={16} />, href: '/master-kemasan' },
-    { label: 'Pembelian RAW', icon: <FiShoppingCart size={16} />, href: '/pembelian-raw' },
-    { label: 'Produksi (RAW→PRODUCT)', icon: <FiLayers size={16} />, href: '/produksi' },
+    { label: 'Pembelian Bahan Baku', icon: <FiShoppingCart size={16} />, href: '/pembelian-raw' },
+    { label: 'Produksi', icon: <FiLayers size={16} />, href: '/produksi' },
+    { section: 'Aktivitas Bisnis' },
     {
       label: 'Penjualan',
       icon: <FiFolder size={16} />,
@@ -67,10 +70,11 @@ export function Sidebar() {
       icon: <FiTrendingDown size={16} />,
       isHeader: true,
       children: [
-        { label: 'Lost & Breakage', href: '/kerugian-pengeluaran/lost-breakage' },
+        { label: 'Barang Rusak & Hilang', href: '/kerugian-pengeluaran/lost-breakage' },
         { label: 'Pengeluaran Lain', href: '/kerugian-pengeluaran/pengeluaran-lain' },
       ],
     },
+    { section: 'Gudang & Laporan' },
     { label: 'Inventory', icon: <FiBox size={16} />, href: '/inventory' },
     { label: 'Stock Opname', icon: <FiGrid size={16} />, href: '/inventory/opname' },
     { label: 'Laporan & Export', icon: <FiLayers size={16} />, href: '/laporan' },
@@ -102,29 +106,43 @@ export function Sidebar() {
         </div>
 
         {/* Desktop Collapse / Hide Button */}
-        <button
-          onClick={toggleDesktop}
-          className="hidden lg:flex p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
-          title="Sembunyikan Sidebar"
-          aria-label="Sembunyikan Sidebar"
-        >
-          <FiChevronsLeft size={18} />
-        </button>
+        <div className="flex items-center gap-1.5">
+          <NotificationBell />
+          <button
+            onClick={toggleDesktop}
+            className="hidden lg:flex p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+            title="Sembunyikan Sidebar"
+            aria-label="Sembunyikan Sidebar"
+          >
+            <FiChevronsLeft size={18} />
+          </button>
 
-        {/* Mobile Close Button */}
-        <button
-          onClick={closeMobile}
-          className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
-          title="Tutup Menu"
-          aria-label="Tutup Menu"
-        >
-          <FiX size={18} />
-        </button>
+          {/* Mobile Close Button */}
+          <button
+            onClick={closeMobile}
+            className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+            title="Tutup Menu"
+            aria-label="Tutup Menu"
+          >
+            <FiX size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Navigation Links */}
       <nav className="flex-1 space-y-1 px-3 py-2 overflow-y-auto pb-16">
-        {items.map((item: any) => {
+        {items.map((item: any, idx: number) => {
+          if (item.section) {
+            return (
+              <div
+                key={`sec-${idx}`}
+                className="pt-3 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 select-none"
+              >
+                {item.section}
+              </div>
+            );
+          }
+
           const isActive = pathname === item.href;
           const hasChildren = item.children && item.children.length > 0;
           const isHeader = item.isHeader;

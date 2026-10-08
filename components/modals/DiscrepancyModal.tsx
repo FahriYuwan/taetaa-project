@@ -255,8 +255,8 @@ function UnmatchedScanCard({ sale }: { sale: Sale }) {
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${CHANNEL_BADGE[sale.channel] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
             {sale.channel}
           </span>
-          <span className="text-[10px] font-semibold bg-gray-100 text-gray-600 border border-gray-300 px-2 py-0.5 rounded">
-            🔍 Belum dicocokkan
+          <span className="text-[10px] font-semibold bg-gray-100 text-gray-600 border border-gray-300 px-2 py-0.5 rounded inline-flex items-center gap-1">
+            <FiClock size={10} /> Belum dicocokkan
           </span>
         </div>
         <span className="text-[10px] text-gray-400">{formatDate(sale.date)}</span>

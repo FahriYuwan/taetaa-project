@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveSaleHpp, resolveSaleProfit } from '../lib/finance';
+import { resolveSaleHpp, resolveSaleProfit, parseRupiahNumber } from '../lib/finance';
 
 describe('Finance Domain Calculations', () => {
   describe('resolveSaleHpp', () => {
@@ -64,6 +64,36 @@ describe('Finance Domain Calculations', () => {
       const sale = { qty: 1 };
       const result = resolveSaleProfit(sale, 50000, 70000);
       assert.equal(result, -20000);
+    });
+  });
+
+  describe('parseRupiahNumber', () => {
+    it('correctly parses Indonesian dot-separated thousands amounts', () => {
+      assert.equal(parseRupiahNumber('120.000'), 120000);
+      assert.equal(parseRupiahNumber('10.000'), 10000);
+      assert.equal(parseRupiahNumber('7.800'), 7800);
+      assert.equal(parseRupiahNumber('1.200'), 1200);
+      assert.equal(parseRupiahNumber('102.200'), 102200);
+      assert.equal(parseRupiahNumber('45.000'), 45000);
+      assert.equal(parseRupiahNumber('57.200'), 57200);
+      assert.equal(parseRupiahNumber('1.250.000'), 1250000);
+    });
+
+    it('correctly parses plain numbers and currency prefixed strings', () => {
+      assert.equal(parseRupiahNumber('10'), 10);
+      assert.equal(parseRupiahNumber('0'), 0);
+      assert.equal(parseRupiahNumber('Rp 120.000'), 120000);
+      assert.equal(parseRupiahNumber('-57.200'), -57200);
+      assert.equal(parseRupiahNumber('(10.000)'), -10000);
+    });
+
+    it('handles decimal formats gracefully', () => {
+      assert.equal(parseRupiahNumber('120.000,50'), 120000.5);
+      assert.equal(parseRupiahNumber('120,000'), 120000);
+      assert.equal(parseRupiahNumber('120,000.50'), 120000.5);
+      assert.equal(parseRupiahNumber('0.5'), 0.5);
+      assert.equal(parseRupiahNumber(null), 0);
+      assert.equal(parseRupiahNumber(''), 0);
     });
   });
 });

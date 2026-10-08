@@ -15,6 +15,7 @@ import {
   FiFileText,
   FiExternalLink,
 } from 'react-icons/fi';
+import { StatusDropdown } from '@/components/penjualan/StatusDropdown';
 
 interface Sale {
   id: string;
@@ -53,7 +54,7 @@ interface SaleDetailDrawerProps {
   sale: Sale | null;
   onClose: () => void;
   onEditFinancial?: (sale: Sale) => void;
-  onEditStatus?: (sale: Sale) => void;
+  onEditStatus?: (sale: Sale, newStatus?: string) => void;
   onResolveDiscrepancy?: (sale: Sale) => void;
   onDelete?: (saleId: string) => void;
 }
@@ -67,17 +68,23 @@ const CHANNEL_BADGE: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, string> = {
+  DITERIMA: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  HILANG: 'bg-rose-50 text-rose-700 border-rose-200',
+  RETURN: 'bg-amber-50 text-amber-700 border-amber-200',
   TERKIRIM: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  DIRETURN: 'bg-rose-50 text-rose-700 border-rose-200',
+  DIRETURN: 'bg-amber-50 text-amber-700 border-amber-200',
   DIBATALKAN: 'bg-gray-100 text-gray-600 border-gray-200',
   SELISIH_QTY: 'bg-amber-50 text-amber-700 border-amber-300',
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  TERKIRIM: 'Terkirim',
-  DIRETURN: 'Direturn',
+  DITERIMA: 'Diterima',
+  HILANG: 'Hilang',
+  RETURN: 'Return',
+  TERKIRIM: 'Diterima',
+  DIRETURN: 'Return',
   DIBATALKAN: 'Dibatalkan',
-  SELISIH_QTY: '⚠️ Selisih Qty',
+  SELISIH_QTY: 'Selisih Qty',
 };
 
 export function SaleDetailDrawer({
@@ -248,7 +255,7 @@ export function SaleDetailDrawer({
 
               {sale.orderId && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500 font-medium">Order ID:</span>
+                  <span className="text-xs text-gray-500 font-medium">Order Code:</span>
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono text-xs text-gray-700 bg-white px-2 py-1 rounded border border-gray-200">
                       {sale.orderId}
@@ -256,7 +263,7 @@ export function SaleDetailDrawer({
                     <button
                       onClick={() => copyToClipboard(sale.orderId!, 'orderId')}
                       className="p-1 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
-                      title="Salin Order ID"
+                      title="Salin Order Code"
                     >
                       {copiedKey === 'orderId' ? <FiCheck size={14} className="text-emerald-500" /> : <FiCopy size={14} />}
                     </button>
@@ -266,22 +273,12 @@ export function SaleDetailDrawer({
 
               <div className="flex items-center justify-between pt-1 border-t border-gray-200">
                 <span className="text-xs text-gray-500 font-medium">Status Pesanan:</span>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
-                      STATUS_BADGE[sale.status] ?? 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    {STATUS_LABEL[sale.status] ?? sale.status}
-                  </span>
-                  {onEditStatus && (
-                    <button
-                      onClick={() => onEditStatus(sale)}
-                      className="text-[11px] font-semibold text-blue-600 hover:underline cursor-pointer"
-                    >
-                      Ubah
-                    </button>
-                  )}
+                <div>
+                  <StatusDropdown
+                    currentStatus={sale.status}
+                    onSelect={(newStatus) => onEditStatus?.(sale, newStatus)}
+                    size="md"
+                  />
                 </div>
               </div>
 
@@ -385,10 +382,10 @@ export function SaleDetailDrawer({
                 </div>
               </div>
 
-              {/* Net Revenue / Omset */}
+              {/* Omset */}
               <div className="px-4 py-3 flex items-center justify-between text-xs bg-blue-50/60 border-y border-blue-100">
                 <div>
-                  <span className="font-bold text-blue-900 block">Omset Bersih (Net Revenue):</span>
+                  <span className="font-bold text-blue-900 block">Omset:</span>
                   <span className="text-[10px] text-blue-700">Dana riil yang dicairkan ke kas</span>
                 </div>
                 <span className="text-sm font-bold text-blue-700">{formatRupiah(omsetValue)}</span>

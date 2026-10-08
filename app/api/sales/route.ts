@@ -18,8 +18,13 @@ export async function GET(req: Request) {
       where.channel = channel as Channel;
     }
     if (status && status !== 'all') {
-      where.status = status;
-
+      if (status === 'DITERIMA') {
+        where.status = { in: ['DITERIMA', 'TERKIRIM'] };
+      } else if (status === 'RETURN') {
+        where.status = { in: ['RETURN', 'DIRETURN'] };
+      } else {
+        where.status = status;
+      }
     }
     if (from || to) {
       where.date = {};
@@ -54,16 +59,34 @@ export async function GET(req: Request) {
       const qty = sale.qty || 0;
       const total = sale.total || qty * unitPrice;
       const fee = sale.fee || 0;
-      const netRevenue =
-        sale.netRevenue !== undefined && sale.netRevenue !== null && sale.netRevenue !== 0
-          ? sale.netRevenue
-          : total - fee;
+      const isLost = sale.status === 'HILANG';
+      const isRet = sale.status === 'RETURN' || sale.status === 'DIRETURN';
+
+      const omset = (isLost || isRet) && (!sale.omset || sale.omset === 0)
+        ? 0
+        : (sale.omset || 0);
+
+      const netRevenue = (isLost || isRet) && (!sale.omset || sale.omset === 0)
+        ? 0
+        : (sale.netRevenue !== undefined && sale.netRevenue !== null && sale.netRevenue !== 0
+            ? sale.netRevenue
+            : total - fee);
 
       // HPP & Laba: unified resolution from lib/finance
       const avgCost = costMap.get(sale.skuId) ?? sale.sku?.hppPrice ?? 0;
       const totalHpp = resolveSaleHpp(sale, avgCost);
       const hpp = sale.hpp > 0 ? sale.hpp : (qty > 0 ? totalHpp / qty : totalHpp);
-      const laba = resolveSaleProfit(sale, netRevenue, totalHpp);
+
+      let laba: number;
+      if (sale.laba !== undefined && sale.laba !== null && sale.laba !== 0) {
+        laba = sale.laba;
+      } else if (isLost) {
+        laba = omset - (totalHpp + (sale.shippingFee || 0) + (sale.platformFee || 0));
+      } else if (isRet) {
+        laba = omset - ((sale.shippingFee || 0) + (sale.platformFee || 0));
+      } else {
+        laba = resolveSaleProfit(sale, netRevenue, totalHpp);
+      }
 
       return {
         ...sale,
@@ -151,7 +174,7 @@ export async function POST(req: Request) {
           totalHpp: hppTotal,
           laba,
           notes,
-          status: 'TERKIRIM' as any,
+          status: 'DITERIMA' as any,
 
           scannedByLogistic: false,
           financeMatched: true,

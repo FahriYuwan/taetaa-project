@@ -3,6 +3,7 @@
 import { useSidebar } from '@/components/sidebar/SidebarContext';
 import { colors } from '@/lib/theme';
 import { FiMenu, FiSidebar } from 'react-icons/fi';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 
 export function TopBar() {
   const { isDesktopOpen, toggleDesktop, toggleMobile } = useSidebar();
@@ -35,15 +36,18 @@ export function TopBar() {
           </div>
         </div>
 
-        <button
-          onClick={toggleMobile}
-          className="p-2 rounded-lg transition-colors hover:bg-gray-100 active:bg-gray-200 cursor-pointer"
-          style={{ color: colors.neutral.textStrong }}
-          aria-label="Buka Menu"
-          title="Buka Menu"
-        >
-          <FiMenu size={22} />
-        </button>
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <button
+            onClick={toggleMobile}
+            className="p-2 rounded-lg transition-colors hover:bg-gray-100 active:bg-gray-200 cursor-pointer"
+            style={{ color: colors.neutral.textStrong }}
+            aria-label="Buka Menu"
+            title="Buka Menu"
+          >
+            <FiMenu size={22} />
+          </button>
+        </div>
       </header>
 
       {/* ── DESKTOP TOPBAR (Website saat Sidebar Disembunyikan) ── */}
@@ -75,9 +79,12 @@ export function TopBar() {
             </div>
           </div>
 
-          <div className="text-xs text-gray-400 font-medium flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            Mode Layar Lebar
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <div className="text-xs text-gray-400 font-medium flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              Mode Layar Lebar
+            </div>
           </div>
         </header>
       )}

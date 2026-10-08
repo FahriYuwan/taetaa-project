@@ -86,7 +86,7 @@ export function BulkSaleModal({ isOpen, onClose, onSuccess }: BulkSaleModalProps
             <table className="text-blue-700 text-[10px] border-collapse">
               <thead>
                 <tr>
-                  {['NO', 'ORDER CODE', 'NO RESI', 'DATE', 'SKU CODE', 'PRODUCT', 'QTY', 'PRICE', 'VOUCHER', 'DISCOUNT', 'PLATFORM FEE', 'SHIPPING FEE', 'OMSET', 'HPP', 'TOTAL HPP', 'LABA'].map((col) => (
+                  {['NO', 'NOMOR RESI', 'ORDER CODE', 'DATE', 'SKU CODE', 'PRODUCT', 'QTY', 'PRICE', 'VOUCHER', 'DISCOUNT', 'PLATFORM FEE', 'SHIPPING FEE', 'OMSET', 'HPP', 'TOTAL HPP', 'LABA'].map((col) => (
                     <th key={col} className="border border-blue-200 px-2 py-1 bg-blue-100 font-bold whitespace-nowrap">
                       {col}
                     </th>
@@ -94,8 +94,8 @@ export function BulkSaleModal({ isOpen, onClose, onSuccess }: BulkSaleModalProps
                 </tr>
                 <tr>
                   <td className="border border-blue-200 px-2 py-1 text-center">1</td>
-                  <td className="border border-blue-200 px-2 py-1 font-mono">240801733136US</td>
                   <td className="border border-blue-200 px-2 py-1 font-mono">SPXID0483920193</td>
+                  <td className="border border-blue-200 px-2 py-1 font-mono">240801733136US</td>
                   <td className="border border-blue-200 px-2 py-1">30-Sep</td>
                   <td className="border border-blue-200 px-2 py-1 font-mono">PBG</td>
                   <td className="border border-blue-200 px-2 py-1">Parfum Bubblegum...</td>

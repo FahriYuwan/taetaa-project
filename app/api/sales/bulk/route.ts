@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { MovementType, Channel } from '@prisma/client';
+import { parseRupiahNumber } from '@/lib/finance';
 
-function parseRp(val: string): number {
-  if (!val) return 0;
-  return parseFloat(val.trim().replace(/[^0-9.-]/g, '')) || 0;
-}
+const parseRp = parseRupiahNumber;
 
 function parseDate(val: string): Date {
   // Handle formats like "1-Agu", "2025-08-01", "8/1/2025"
@@ -49,6 +47,21 @@ export async function POST(req: Request) {
 
     const lines = text.trim().split('\n').filter((l: string) => l.trim());
 
+    // Inspect header row to detect column arrangement if available
+    const headerLine = lines.find((l: string) => {
+      const u = l.toUpperCase();
+      return u.includes('RESI') || u.includes('ORDER');
+    });
+    let headerHasResiFirst = false;
+    if (headerLine) {
+      const hCols: string[] = headerLine.split('\t').map((c: string) => c.trim().toUpperCase());
+      const rIdx = hCols.findIndex((c: string) => c.includes('RESI'));
+      const oIdx = hCols.findIndex((c: string) => c.includes('ORDER'));
+      if (rIdx !== -1 && oIdx !== -1 && rIdx < oIdx) {
+        headerHasResiFirst = true;
+      }
+    }
+
     // Skip header row if present (check if first cell is "NO" or a number)
     const dataLines = lines.filter((line: string) => {
       const firstCell = line.split('\t')[0]?.trim().toUpperCase();
@@ -65,7 +78,7 @@ export async function POST(req: Request) {
       for (const line of dataLines) {
         const cols = line.split('\t');
         // Mendukung Format 16 Kolom Baru:
-        // NO | ORDER CODE | NO RESI | DATE | SKU CODE | PRODUCT | QTY | PRICE | VOUCHER | DISCOUNT | PLATFORM FEE | SHIPPING FEE | OMSET | HPP | TOTAL HPP | LABA
+        // NO | NOMOR RESI | ORDER CODE | DATE | SKU CODE | PRODUCT | QTY | PRICE | VOUCHER | DISCOUNT | PLATFORM FEE | SHIPPING FEE | OMSET | HPP | TOTAL HPP | LABA
         // Serta mendukung fallback Format 15 Kolom Lama:
         // NO | ORDER CODE | DATE | SKU CODE | PRODUCT | QTY | PRICE | VOUCHER | DISCOUNT | PLATFORM FEE | SHIPPING FEE | OMSET | HPP | TOTAL HPP | LABA
 
@@ -86,11 +99,26 @@ export async function POST(req: Request) {
         let labaStr = '';
 
         if (cols.length >= 16) {
-          // Format 16 kolom baru
+          const col1 = cols[1]?.trim() || '';
+          const col2 = cols[2]?.trim() || '';
+
+          // Determine which column is Resi and which is Order Code
+          const isCol1Resi =
+            headerHasResiFirst ||
+            /^([A-Z]{2,5}[0-9]{5,}|SPX|JP|JX|TKP|SICEPAT|JNT|J&T|ANTERAJA|ID)/i.test(col1);
+
+          if (isCol1Resi) {
+            resiStr = col1;
+            orderCode = col2;
+          } else {
+            orderCode = col1;
+            resiStr = col2;
+          }
+
           [
             ,
-            orderCode,
-            resiStr,
+            ,
+            ,
             dateStr,
             skuCode,
             _product,
@@ -298,7 +326,7 @@ export async function POST(req: Request) {
               hpp: computedHpp,
               totalHpp: computedTotalHpp,
               laba,
-              status: 'TERKIRIM' as any,
+              status: 'DITERIMA' as any,
               scannedByLogistic: false,
               financeMatched: true,
             },

@@ -285,7 +285,7 @@ export function EditSaleFinancialModal({
               <span className="font-semibold text-red-600">- {formatRp(totalDeductions)}</span>
             </div>
             <div className="flex justify-between font-bold text-gray-900 border-t border-blue-200 pt-1.5">
-              <span>Omset Bersih Diterima</span>
+              <span>Omset</span>
               <span className="text-blue-600">{formatRp(netRevenue)}</span>
             </div>
             <div className="flex justify-between text-gray-600">

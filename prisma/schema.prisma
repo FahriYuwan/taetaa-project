@@ -208,7 +208,7 @@ model Sale {
   totalHpp        Float      @default(0)
   laba            Float      @default(0)
   // Scanner / logistic fields
-  status            SaleStatus @default(TERKIRIM)
+  status            SaleStatus @default(DITERIMA)
   scannedByLogistic Boolean    @default(false)
   financeMatched    Boolean    @default(false) // has been matched with bulk paste
   hasDiscrepancy    Boolean    @default(false) // true = qty mismatch, needs human confirmation before financeMatched
@@ -234,6 +234,9 @@ enum Channel {
 }
 
 enum SaleStatus {
+  DITERIMA
+  HILANG
+  RETURN
   TERKIRIM
   DIRETURN
   DIBATALKAN

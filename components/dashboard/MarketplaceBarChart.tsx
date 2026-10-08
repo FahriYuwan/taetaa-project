@@ -43,7 +43,7 @@ export function MarketplaceBarChart({ data }: MarketplaceBarChartProps) {
           marginBottom: '16px',
         }}
       >
-        Net Revenue per Marketplace
+        Omset per Marketplace
       </div>
       {data.length === 0 ? (
         <div

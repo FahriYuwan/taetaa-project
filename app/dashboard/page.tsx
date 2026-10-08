@@ -242,7 +242,7 @@ export default function DashboardPage() {
               }}
             >
               <KPICard
-                label="PENDAPATAN BERSIH"
+                label="TOTAL OMSET"
                 value={`Rp ${data.kpi.netRevenue.toLocaleString('id-ID')}`}
                 valueColor={colors.brand[500]}
                 description={`Gross: Rp ${data.kpi.totalGross.toLocaleString('id-ID')} · Fee: Rp ${data.kpi.totalFee.toLocaleString('id-ID')}`}

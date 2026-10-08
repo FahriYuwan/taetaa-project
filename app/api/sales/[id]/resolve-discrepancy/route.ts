@@ -84,7 +84,7 @@ export async function POST(
             hpp,
             totalHpp,
             laba,
-            status: 'TERKIRIM',
+            status: 'DITERIMA',
             financeMatched: true,
             hasDiscrepancy: false,
             notes: body.notes ?? `✅ Discrepancy diselesaikan: Qty logistik (${effectiveQty}) diterima sebagai acuan fisik.`,
@@ -164,7 +164,7 @@ export async function POST(
             hpp,
             totalHpp,
             laba,
-            status: 'TERKIRIM',
+            status: 'DITERIMA',
             financeMatched: true,
             hasDiscrepancy: false,
             notes:
