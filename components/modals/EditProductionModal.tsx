@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { colors } from '@/lib/theme';
 import { Button } from '@/components/ui/Button';
+import { NumberInput } from '@/components/ui/NumberInput';
 
 interface EditProductionModalProps {
   isOpen: boolean;
@@ -141,17 +142,16 @@ export function EditProductionModal({
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
                   Jumlah Output (Qty) *
                 </label>
-                <input
-                  type="number"
-                  required
-                  min="0.01"
-                  step="any"
-                  value={formData.outputQty || ''}
-                  onChange={(e) => setFormData({ ...formData, outputQty: parseFloat(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 rounded border text-sm font-bold"
-                  style={{ borderColor: colors.neutral.border }}
+                <NumberInput
+                  value={formData.outputQty}
+                  onChange={(val) => setFormData({ ...formData, outputQty: val })}
+                  suffix="unit"
+                  allowDecimal
+                  className="border bg-white font-bold"
+                  style={{ borderColor: colors.neutral.border } as any}
                   disabled={isLoading}
                   placeholder="0"
+                  showPreview
                 />
               </div>
             </div>

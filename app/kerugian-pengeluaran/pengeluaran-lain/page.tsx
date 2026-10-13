@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/header/PageHeader';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Button } from '@/components/ui/Button';
+import { NumberInput } from '@/components/ui/NumberInput';
 import { ConfirmDialog } from '@/components/modals/ConfirmDialog';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
@@ -300,12 +301,14 @@ function ExpenseModal({ initialData, onClose, onSubmit }: any) {
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Jumlah (Rp)</label>
-            <input 
-              type="number"
-              className="w-full px-3 py-2 border rounded text-sm" 
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Jumlah Nominal</label>
+            <NumberInput 
+              className="border bg-white font-bold" 
+              prefix="Rp "
               value={formData.amount} 
-              onChange={e => setFormData({...formData, amount: parseFloat(e.target.value) || 0})}
+              onChange={(val) => setFormData({...formData, amount: val})}
+              placeholder="0"
+              showPreview
             />
           </div>
           <div>

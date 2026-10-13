@@ -13,7 +13,9 @@ interface SKU {
   code: string;
   name: string;
   type: 'RAW' | 'PRODUCT' | 'PACKAGE';
+  productSize?: number;
   hppPrice?: number;
+  avgCost?: number;
   sellingPrice?: number;
   stock?: number;
   stockMin?: number | null;
@@ -214,6 +216,7 @@ export default function MasterSKUPage() {
                     <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>SKU CODE</th>
                     <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>NAMA</th>
                     <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>TIPE</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>UKURAN</th>
                     <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>STOK MIN</th>
                     <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>HARGA HPP</th>
                     <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>HARGA JUAL</th>
@@ -232,11 +235,26 @@ export default function MasterSKUPage() {
                         <td className="px-6 py-4 text-center">
                           <Badge type={sku.type}>{sku.type === 'PRODUCT' ? 'PRODUCT' : sku.type}</Badge>
                         </td>
+                        <td className="px-6 py-4 text-right text-sm" style={{ color: colors.neutral.textStrong }}>
+                          {sku.productSize && sku.productSize > 0 ? (
+                            <span>
+                              {sku.productSize >= 1000
+                                ? `${(sku.productSize / 1000).toLocaleString('id-ID', { maximumFractionDigits: 2 })} L`
+                                : `${sku.productSize.toLocaleString('id-ID')} ml`}
+                            </span>
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </td>
                         <td className="px-6 py-4 text-right text-sm font-medium" style={{ color: colors.neutral.textMuted }}>
                           {stockMin > 0 ? stockMin.toLocaleString('id-ID') : '—'}
                         </td>
-                        <td className="px-6 py-4 text-right text-sm" style={{ color: colors.neutral.textStrong }}>
-                          {sku.hppPrice ? `Rp ${sku.hppPrice.toLocaleString('id-ID')}` : 'Rp 0'}
+                        <td className="px-6 py-4 text-right text-sm font-medium" style={{ color: colors.neutral.textStrong }}>
+                          {(() => {
+                            const effectiveHpp = sku.avgCost ?? sku.hppPrice ?? 0;
+                            if (!effectiveHpp || effectiveHpp <= 0) return 'Rp 0';
+                            return `Rp ${effectiveHpp % 1 === 0 ? effectiveHpp.toLocaleString('id-ID') : effectiveHpp.toLocaleString('id-ID', { maximumFractionDigits: 2 })}`;
+                          })()}
                         </td>
                         <td className="px-6 py-4 text-right text-sm" style={{ color: colors.neutral.textStrong }}>
                           {sku.type === 'PACKAGE' && sku.sellingPrice ? `Rp ${sku.sellingPrice.toLocaleString('id-ID')}` : '—'}
@@ -330,6 +348,11 @@ function BulkPasteModal({ isOpen, onClose, onSuccess }: { isOpen: boolean, onClo
 
   if (!isOpen) return null;
 
+  const sampleData = `SBN\tSabun Curah 20 Liter\tRAW\t20000\t0\t10
+PBG\tParfum Bubblegum 5L\tRAW\t5000\t0\t5
+SBN1-PBG\tSabun Bubblegum 1L\tPACKAGE\t1000\t25000\t35
+SBN2-PCF\tSabun Kopi 500ml\tPACKAGE\t500\t15000\t50`;
+
   async function handleImport() {
     if (!text.trim()) return;
     setLoading(true);
@@ -355,18 +378,50 @@ function BulkPasteModal({ isOpen, onClose, onSuccess }: { isOpen: boolean, onClo
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-2xl w-full shadow-xl">
-        <h3 className="text-lg font-bold mb-2">Bulk Paste SKU</h3>
-        <p className="text-xs text-gray-500 mb-4">
-          Format: <code>KODE [TAB] NAMA [TAB] TIPE (RAW/PRODUCT/PACKAGE) [TAB] HARGA</code>
-        </p>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-lg p-6 max-w-3xl w-full shadow-xl">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-lg font-bold text-gray-900">Bulk Paste Master SKU</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl font-bold">✕</button>
+        </div>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3.5 mb-4 text-xs text-blue-900 space-y-2">
+          <div className="font-semibold flex items-center gap-1.5 text-blue-800">
+            <span>📋 Format Kolom dari Excel / Spreadsheet (Tab-Separated):</span>
+          </div>
+          <div className="bg-white/80 p-2 rounded border border-blue-100 font-mono text-[11px] overflow-x-auto text-blue-950 font-semibold">
+            KODE [TAB] NAMA [TAB] TIPE [TAB] UKURAN_ML [TAB] HARGA_JUAL [TAB] STOK_MIN
+          </div>
+          <div className="text-[11px] text-blue-700 leading-relaxed grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 pt-1">
+            <p>• <strong>Wajib:</strong> KODE, NAMA, TIPE (<code>RAW</code>, <code>PRODUCT</code>, <code>PACKAGE</code>)</p>
+            <p>• <strong>UKURAN_ML:</strong> Ukuran kemasan dlm ml (misal <code>20000</code> untuk 20L, <code>500</code> untuk 500ml) <span className="text-blue-500 italic">(opsional, default 0)</span></p>
+            <p>• <strong>HARGA JUAL:</strong> Khusus PACKAGE, kosongkan untuk RAW/PRODUCT <span className="text-blue-500 italic">(opsional)</span></p>
+            <p>• <strong>STOK MIN:</strong> Batas minimum peringatan stok <span className="text-blue-500 italic">(opsional, default 0)</span></p>
+            <div className="sm:col-span-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded p-2 text-[11px] mt-1">
+              💡 <strong>HPP (Biaya Modal) Tidak Perlu Diinput:</strong> HPP dihitung otomatis oleh sistem secara dinamis berdasarkan data mutasi pembelian riil (Weighted Average Cost / COGS RAW) dan resep BOM produksi (COGS WIP/Marketplace).
+            </div>
+            <p className="sm:col-span-2 text-gray-500 italic">• Baris header (judul kolom) akan dilewati otomatis saat paste.</p>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center mb-1.5">
+          <label className="text-xs font-semibold text-gray-700">Tempel Data dari Spreadsheet:</label>
+          <button
+            type="button"
+            onClick={() => setText(sampleData)}
+            className="text-xs text-blue-600 hover:text-blue-800 underline font-medium cursor-pointer"
+          >
+            Gunakan Contoh Format
+          </button>
+        </div>
+
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          className="w-full h-64 p-3 border rounded text-sm font-mono mb-4"
-          placeholder="Paste dari Excel di sini..."
+          className="w-full h-64 p-3 border rounded text-xs font-mono mb-4 focus:ring-1 focus:ring-blue-500 outline-none"
+          placeholder={"KODE\tNAMA\tTIPE\tUKURAN_ML\tHARGA_JUAL\tSTOK_MIN\nSBN\tSabun Curah 20 Liter\tRAW\t20000\t0\t10\nSBN1-PBG\tSabun Bubblegum 1L\tPACKAGE\t1000\t25000\t35"}
         />
+
         <div className="flex justify-end gap-3">
           <Button variant="secondary" onClick={onClose} disabled={loading}>Batal</Button>
           <Button variant="primary" onClick={handleImport} disabled={loading}>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
+import { NumberInput } from '@/components/ui/NumberInput';
 import {
   FiAlertTriangle,
   FiX,
@@ -80,7 +81,7 @@ function DiscrepancyResolveCard({
   onResolved: () => void;
 }) {
   const [mode, setMode] = useState<'accept_logistic' | 'accept_finance' | null>(null);
-  const [financeQty, setFinanceQty] = useState('');
+  const [financeQty, setFinanceQty] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { showToast } = useToast();
 
@@ -89,12 +90,12 @@ function DiscrepancyResolveCard({
   const suggestedFinanceQty = noteMatch ? noteMatch[1] : '';
 
   useEffect(() => {
-    if (suggestedFinanceQty) setFinanceQty(suggestedFinanceQty);
+    if (suggestedFinanceQty) setFinanceQty(parseFloat(suggestedFinanceQty) || 0);
   }, [suggestedFinanceQty]);
 
   async function handleResolve() {
     if (!mode) return;
-    if (mode === 'accept_finance' && !financeQty) {
+    if (mode === 'accept_finance' && (!financeQty || financeQty <= 0)) {
       showToast({ message: 'Masukkan qty finance yang benar', type: 'error' });
       return;
     }
@@ -105,7 +106,7 @@ function DiscrepancyResolveCard({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode,
-          financeQty: mode === 'accept_finance' ? parseFloat(financeQty) : undefined,
+          financeQty: mode === 'accept_finance' ? financeQty : undefined,
         }),
       });
       if (!res.ok) {
@@ -214,16 +215,17 @@ function DiscrepancyResolveCard({
             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
               Konfirmasi Qty Finance yang Benar
             </label>
-            <input
-              type="number"
-              value={financeQty}
-              onChange={(e) => setFinanceQty(e.target.value)}
-              min="0.01"
-              step="any"
-              className="w-32 px-3 py-1.5 border border-amber-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white"
-              placeholder="e.g. 3"
-            />
-            <span className="text-xs text-gray-400 ml-2">unit</span>
+            <div className="w-40">
+              <NumberInput
+                value={financeQty}
+                onChange={setFinanceQty}
+                suffix="unit"
+                allowDecimal
+                className="border border-amber-300 rounded-lg text-sm bg-white"
+                placeholder="0"
+                showPreview
+              />
+            </div>
           </div>
         )}
       </div>
@@ -232,7 +234,7 @@ function DiscrepancyResolveCard({
       {mode && (
         <button
           onClick={handleResolve}
-          disabled={isSubmitting || (mode === 'accept_finance' && !financeQty)}
+          disabled={isSubmitting || (mode === 'accept_finance' && (!financeQty || financeQty <= 0))}
           className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
           {isSubmitting ? (

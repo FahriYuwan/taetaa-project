@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/header/PageHeader';
 import { Button, Badge } from '@/components/ui/Button';
+import { NumberInput } from '@/components/ui/NumberInput';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
 import {
@@ -712,16 +713,15 @@ export default function StockOpnamePage() {
                             {item.systemStock.toLocaleString('id-ID')}
                           </td>
                           <td className="px-4 py-2 text-center">
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="w-28 px-2 py-1.5 border rounded text-right text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                              value={item.physicalStock}
-                              onChange={(e) =>
-                                handlePhysicalStockChange(item.skuId, parseFloat(e.target.value) || 0)
-                              }
-                              disabled={isSubmitting}
-                            />
+                            <div className="w-28 mx-auto">
+                              <NumberInput
+                                value={item.physicalStock}
+                                onChange={(val) => handlePhysicalStockChange(item.skuId, val)}
+                                allowDecimal
+                                className="border text-right text-sm font-bold focus:ring-2 focus:ring-blue-500 bg-white"
+                                disabled={isSubmitting}
+                              />
+                            </div>
                           </td>
                           <td className={`px-4 py-3 text-right ${diffColor}`}>
                             {item.diff > 0

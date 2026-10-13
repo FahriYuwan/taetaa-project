@@ -29,6 +29,7 @@ interface Sale {
     code: string;
     name: string;
     hppPrice?: number;
+    avgCost?: number;
   };
   qty: number;
   unitPrice: number;
@@ -130,7 +131,8 @@ export function SaleDetailDrawer({
   };
 
   const omsetValue = sale.omset || sale.netRevenue || 0;
-  const totalHppValue = sale.totalHpp || (sale.hpp > 0 ? sale.hpp : (sale.sku.hppPrice || 0) * sale.qty);
+  const effectiveSkuHpp = sale.sku.avgCost || sale.sku.hppPrice || 0;
+  const totalHppValue = sale.totalHpp || (sale.hpp > 0 ? sale.hpp : effectiveSkuHpp * sale.qty);
   const labaValue = sale.laba !== 0 ? sale.laba : omsetValue - totalHppValue;
   const grossSubtotal = sale.total || (sale.unitPrice * sale.qty);
   const profitMargin = omsetValue > 0 ? ((labaValue / omsetValue) * 100).toFixed(1) : '0';
@@ -227,9 +229,8 @@ export function SaleDetailDrawer({
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-500 font-medium">Marketplace / Channel:</span>
                 <span
-                  className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase border ${
-                    CHANNEL_BADGE[sale.channel] ?? 'bg-gray-100 text-gray-600'
-                  }`}
+                  className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase border ${CHANNEL_BADGE[sale.channel] ?? 'bg-gray-100 text-gray-600'
+                    }`}
                 >
                   {sale.channel}
                 </span>
@@ -395,7 +396,7 @@ export function SaleDetailDrawer({
               <div className="px-4 py-3 space-y-1.5 bg-white text-xs">
                 <div className="flex items-center justify-between text-gray-600">
                   <span>HPP Satuan ({sale.qty} pcs):</span>
-                  <span className="text-gray-700">{formatRupiah(sale.hpp || sale.sku.hppPrice || 0)} / pcs</span>
+                  <span className="text-gray-700">{formatRupiah(sale.hpp || sale.sku.avgCost || sale.sku.hppPrice || 0)} / pcs</span>
                 </div>
                 <div className="flex items-center justify-between font-medium text-orange-600">
                   <span>Total Beban Modal (HPP):</span>
@@ -405,9 +406,8 @@ export function SaleDetailDrawer({
 
               {/* Net Profit Summary */}
               <div
-                className={`px-4 py-3.5 flex items-center justify-between ${
-                  labaValue >= 0 ? 'bg-emerald-50/80 text-emerald-950' : 'bg-rose-50/80 text-rose-950'
-                }`}
+                className={`px-4 py-3.5 flex items-center justify-between ${labaValue >= 0 ? 'bg-emerald-50/80 text-emerald-950' : 'bg-rose-50/80 text-rose-950'
+                  }`}
               >
                 <div>
                   <span className="font-bold text-xs block">Laba Bersih Transaksi:</span>
@@ -416,9 +416,8 @@ export function SaleDetailDrawer({
                   </span>
                 </div>
                 <span
-                  className={`text-base font-extrabold ${
-                    labaValue >= 0 ? 'text-emerald-700' : 'text-rose-600'
-                  }`}
+                  className={`text-base font-extrabold ${labaValue >= 0 ? 'text-emerald-700' : 'text-rose-600'
+                    }`}
                 >
                   {labaValue >= 0 ? `+ ${formatRupiah(labaValue)}` : `- ${formatRupiah(Math.abs(labaValue))}`}
                 </span>

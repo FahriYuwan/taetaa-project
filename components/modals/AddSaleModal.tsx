@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { colors } from '@/lib/theme';
 import { Button } from '@/components/ui/Button';
+import { NumberInput } from '@/components/ui/NumberInput';
 
 interface AddSaleModalProps {
   isOpen: boolean;
@@ -230,12 +231,11 @@ export function AddSaleModal({
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
                   Qty
                 </label>
-                <input
-                  type="number"
-                  value={formData.qty || ''}
-                  onChange={(e) => setFormData({ ...formData, qty: parseInt(e.target.value) || 0 })}
-                  className={inputClass}
-                  style={{ borderColor: colors.neutral.border }}
+                <NumberInput
+                  value={formData.qty}
+                  onChange={(val) => setFormData({ ...formData, qty: val })}
+                  className="border bg-white"
+                  style={{ borderColor: colors.neutral.border } as any}
                   disabled={isLoading}
                   placeholder="0"
                   min={1}
@@ -243,16 +243,17 @@ export function AddSaleModal({
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
-                  Harga Jual (Rp)
+                  Harga Jual
                 </label>
-                <input
-                  type="number"
-                  value={formData.unitPrice || ''}
-                  onChange={(e) => setFormData({ ...formData, unitPrice: parseInt(e.target.value) || 0 })}
-                  className={inputClass}
-                  style={{ borderColor: colors.neutral.border }}
+                <NumberInput
+                  value={formData.unitPrice}
+                  onChange={(val) => setFormData({ ...formData, unitPrice: val })}
+                  prefix="Rp "
+                  className="border bg-white font-bold"
+                  style={{ borderColor: colors.neutral.border } as any}
                   disabled={isLoading}
                   placeholder="0"
+                  showPreview
                 />
               </div>
             </div>
@@ -264,58 +265,62 @@ export function AddSaleModal({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
-                  Voucher (Rp)
+                  Voucher
                 </label>
-                <input
-                  type="number"
-                  value={formData.voucher || ''}
-                  onChange={(e) => setFormData({ ...formData, voucher: parseInt(e.target.value) || 0 })}
-                  className={inputClass}
-                  style={{ borderColor: colors.neutral.border }}
+                <NumberInput
+                  value={formData.voucher}
+                  onChange={(val) => setFormData({ ...formData, voucher: val })}
+                  prefix="Rp "
+                  className="border bg-white"
+                  style={{ borderColor: colors.neutral.border } as any}
                   disabled={isLoading}
                   placeholder="0"
+                  showPreview
                 />
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
-                  Diskon (Rp)
+                  Diskon
                 </label>
-                <input
-                  type="number"
-                  value={formData.discount || ''}
-                  onChange={(e) => setFormData({ ...formData, discount: parseInt(e.target.value) || 0 })}
-                  className={inputClass}
-                  style={{ borderColor: colors.neutral.border }}
+                <NumberInput
+                  value={formData.discount}
+                  onChange={(val) => setFormData({ ...formData, discount: val })}
+                  prefix="Rp "
+                  className="border bg-white"
+                  style={{ borderColor: colors.neutral.border } as any}
                   disabled={isLoading}
                   placeholder="0"
+                  showPreview
                 />
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
-                  Platform Fee (Rp)
+                  Platform Fee
                 </label>
-                <input
-                  type="number"
-                  value={formData.platformFee || ''}
-                  onChange={(e) => setFormData({ ...formData, platformFee: parseInt(e.target.value) || 0 })}
-                  className={inputClass}
-                  style={{ borderColor: colors.neutral.border }}
+                <NumberInput
+                  value={formData.platformFee}
+                  onChange={(val) => setFormData({ ...formData, platformFee: val })}
+                  prefix="Rp "
+                  className="border bg-white"
+                  style={{ borderColor: colors.neutral.border } as any}
                   disabled={isLoading}
                   placeholder="0"
+                  showPreview
                 />
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
-                  Shipping Fee (Rp)
+                  Shipping Fee
                 </label>
-                <input
-                  type="number"
-                  value={formData.shippingFee || ''}
-                  onChange={(e) => setFormData({ ...formData, shippingFee: parseInt(e.target.value) || 0 })}
-                  className={inputClass}
-                  style={{ borderColor: colors.neutral.border }}
+                <NumberInput
+                  value={formData.shippingFee}
+                  onChange={(val) => setFormData({ ...formData, shippingFee: val })}
+                  prefix="Rp "
+                  className="border bg-white"
+                  style={{ borderColor: colors.neutral.border } as any}
                   disabled={isLoading}
                   placeholder="0"
+                  showPreview
                 />
               </div>
             </div>

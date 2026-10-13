@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { colors } from '@/lib/theme';
 import { Button } from '@/components/ui/Button';
+import { NumberInput } from '@/components/ui/NumberInput';
 import { useToast } from '@/lib/toast';
 import { FiX, FiCheck, FiDollarSign, FiLock } from 'react-icons/fi';
 
@@ -75,7 +76,7 @@ export function EditSaleFinancialModal({
   const totalGross = qty * unitPrice;
   const totalDeductions = voucher + discount + platformFee + shippingFee;
   const netRevenue = totalGross - totalDeductions;
-  const hppPerUnit = sale.hpp || sale.sku.hppPrice || 0;
+  const hppPerUnit = sale.hpp || (sale.sku as any).avgCost || sale.sku.hppPrice || 0;
   const totalHpp = sale.totalHpp || qty * hppPerUnit;
   const profit = netRevenue - totalHpp;
 
@@ -196,13 +197,15 @@ export function EditSaleFinancialModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                Harga Satuan (Rp)
+                Harga Satuan
               </label>
-              <input
-                type="number"
+              <NumberInput
                 value={unitPrice}
-                onChange={(e) => setUnitPrice(parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                onChange={setUnitPrice}
+                prefix="Rp "
+                className="border border-gray-300 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 bg-white"
+                placeholder="0"
+                showPreview
               />
             </div>
 
@@ -217,49 +220,57 @@ export function EditSaleFinancialModal({
 
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                Voucher Penjual (Rp)
+                Voucher Penjual
               </label>
-              <input
-                type="number"
+              <NumberInput
                 value={voucher}
-                onChange={(e) => setVoucher(parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs text-red-600 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                onChange={setVoucher}
+                prefix="Rp "
+                className="border border-gray-300 text-red-600 font-medium focus:ring-2 focus:ring-blue-500 bg-white"
+                placeholder="0"
+                showPreview
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                Diskon Penjual (Rp)
+                Diskon Penjual
               </label>
-              <input
-                type="number"
+              <NumberInput
                 value={discount}
-                onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs text-red-600 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                onChange={setDiscount}
+                prefix="Rp "
+                className="border border-gray-300 text-red-600 font-medium focus:ring-2 focus:ring-blue-500 bg-white"
+                placeholder="0"
+                showPreview
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                Biaya Platform / Admin (Rp)
+                Biaya Platform / Admin
               </label>
-              <input
-                type="number"
+              <NumberInput
                 value={platformFee}
-                onChange={(e) => setPlatformFee(parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs text-red-600 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                onChange={setPlatformFee}
+                prefix="Rp "
+                className="border border-gray-300 text-red-600 font-medium focus:ring-2 focus:ring-blue-500 bg-white"
+                placeholder="0"
+                showPreview
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                Ongkir Dibayar Penjual (Rp)
+                Ongkir Dibayar Penjual
               </label>
-              <input
-                type="number"
+              <NumberInput
                 value={shippingFee}
-                onChange={(e) => setShippingFee(parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs text-red-600 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                onChange={setShippingFee}
+                prefix="Rp "
+                className="border border-gray-300 text-red-600 font-medium focus:ring-2 focus:ring-blue-500 bg-white"
+                placeholder="0"
+                showPreview
               />
             </div>
           </div>

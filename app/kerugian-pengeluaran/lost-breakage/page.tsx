@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/header/PageHeader';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Button } from '@/components/ui/Button';
+import { NumberInput } from '@/components/ui/NumberInput';
 import { ConfirmDialog } from '@/components/modals/ConfirmDialog';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
@@ -312,12 +313,14 @@ function BreakageModal({ initialData, onClose, onSubmit }: any) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Jumlah (Qty)</label>
-              <input 
-                type="number"
-                className="w-full px-3 py-2 border rounded text-sm" 
+              <NumberInput 
+                className="border bg-white" 
                 value={formData.qty} 
-                onChange={e => setFormData({...formData, qty: parseFloat(e.target.value) || 0})}
+                onChange={(val) => setFormData({...formData, qty: val})}
+                suffix="unit"
+                allowDecimal
                 placeholder="0"
+                showPreview
               />
             </div>
             <div>

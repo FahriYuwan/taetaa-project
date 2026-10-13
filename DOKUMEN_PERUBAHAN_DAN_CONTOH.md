@@ -14,7 +14,11 @@
 6. [Perubahan 5: Validasi Input Ketat dengan Skema Zod](#6-perubahan-5-validasi-input-ketat-dengan-skema-zod)
 7. [Perubahan 6: Refaktor Komponen Monolitik (ScannerModal.tsx)](#7-perubahan-6-refaktor-komponen-monolitik-scannermodaltsx)
 8. [Perubahan 7: Automated Unit Testing (npm test)](#8-perubahan-7-automated-unit-testing-npm-test)
-9. [Tabel Cheatsheet Ringkasan](#9-tabel-cheatsheet-ringkasan)
+9. [Perubahan 8: Dashboard & Laporan Keuangan Responsif Multi-Platform](#8-perubahan-8-dashboard--laporan-keuangan-responsif-multi-platform)
+10. [Perubahan 10: Input Pemisah Ribuan Format Indonesia (NumberInput.tsx) di Seluruh Modal](#10-perubahan-10-input-pemisah-ribuan-format-indonesia-numberinputtsx-di-seluruh-modal)
+11. [Perubahan 11: Transformasi HPP Dinamis & Bulk Paste Master SKU Modern](#11-perubahan-11-transformasi-hpp-dinamis--bulk-paste-master-sku-modern)
+12. [Perubahan 12: Rekonstruksi Seeder Database Sesuai Siklus Riil Excel AGUSTUS 2026](#12-perubahan-12-rekonstruksi-seeder-database-sesuai-siklus-riil-excel-agustus-2026)
+13. [Tabel Cheatsheet Ringkasan](#13-tabel-cheatsheet-ringkasan)
 
 ---
 
@@ -393,10 +397,80 @@ ok 2 - Validation Schemas
 
 ---
 
-## 9. Tabel Cheatsheet Ringkasan
+## 10. Perubahan 10: Input Pemisah Ribuan Format Indonesia (NumberInput.tsx) di Seluruh Modal
+
+### 📌 Masalah Sebelumnya
+Pada berbagai modal transaksi (Penjualan, Pembelian RAW, Produksi, Biaya Lain, Kemasan, Discrepancy), kolom input nominal angka dan rupiah menggunakan tag `<input type="number">` polos:
+- Angka ribuan panjang seperti `50000` dan `500000` tidak memiliki tanda pemisah titik ribuan, sehingga staf kasir/finance sangat rentan keliru memasukkan kelebihan atau kekurangan digit nol (contoh salah ketik Rp 50.000 menjadi Rp 500.000).
+- Tidak ada indikator visual atau pratinjau teks bantuan nominal untuk memverifikasi kebenaran input sebelum tombol simpan ditekan.
+
+### 💡 Solusi Baru
+1. Dibuat komponen terpusat [components/ui/NumberInput.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/ui/NumberInput.tsx):
+   - **Pemisah Ribuan Real-Time**: Otomatis memformat angka dengan titik ribuan gaya Indonesia (`50.000`, `1.500.000`).
+   - **Prefix & Suffix**: Mendukung awalan mata uang (`Rp `) dan akhiran satuan kuantitas (`unit`, `ml`, `pcs`, `l`).
+   - **Live Preview Helper**: Menampilkan label bantu interaktif di bawah kotak input (misal: *"Rp 150.000"* atau *"50.000 ml"*).
+2. Diterapkan secara seragam di seluruh modal sistem:
+   - [AddSaleModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddSaleModal.tsx) & [EditSaleFinancialModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/EditSaleFinancialModal.tsx)
+   - [AddPurchaseModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddPurchaseModal.tsx)
+   - [AddProductionModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddProductionModal.tsx) & [EditProductionModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/EditProductionModal.tsx)
+   - [AddKerugianModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddKerugianModal.tsx) & [DiscrepancyModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/DiscrepancyModal.tsx)
+   - [AddAffiliateActivityModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddAffiliateActivityModal.tsx)
+   - Halaman [app/master-kemasan/page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/master-kemasan/page.tsx), [app/kerugian-pengeluaran/pengeluaran-lain/page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/kerugian-pengeluaran/pengeluaran-lain/page.tsx), dan [app/inventory/opname/page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/inventory/opname/page.tsx).
+
+---
+
+## 11. Perubahan 11: Transformasi HPP Dinamis & Bulk Paste Master SKU Modern
+
+### 📌 Masalah Sebelumnya
+1. **Input HPP Manual Redundan**: Di modal tambah/edit SKU terdapat input manual *Harga HPP*, padahal di alur akuntansi taetaa, HPP bukanlah angka statis, melainkan dihitung otomatis oleh sistem dari mutasi pembelian riil (`COGS RAW` via Moving Weighted Average) dan resep BOM saat perakitan (`COGS WIP` / `COGS MARKETPLACE`).
+2. **Format Bulk Paste Mismatch dengan Excel**: Modal *Bulk Paste* Master SKU meminta 7 kolom termasuk kolom `HARGA_HPP`, padahal di sheet `SKU MASTER` milik finance tidak terdapat kolom HPP sama sekali.
+3. **Tabel Master SKU Menampilkan Rp 0**: Tabel di [app/master-sku/page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/master-sku/page.tsx) membaca kolom `sku.hppPrice` (statis awal = 0) alih-alih `sku.avgCost` (hasil mutasi dinamis dari `SKUCostHistory`), sehingga saat staf membeli barang masuk, HPP di tabel SKU tetap menampilkan Rp 0.
+
+### 💡 Solusi Baru
+1. **Eliminasi Input Manual HPP**: Input manual HPP dihapus dari [AddEditSKUModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddEditSKUModal.tsx) dan digantikan kartu ringkasan dinamis terotomasi yang menjelaskan bahwa HPP dihitung langsung oleh sistem.
+2. **Format Standar Bulk Paste 6 Kolom**:
+   ```text
+   KODE [TAB] NAMA [TAB] TIPE [TAB] UKURAN_ML [TAB] HARGA_JUAL [TAB] STOK_MIN
+   ```
+   - Diperbarui di [app/api/skus/bulk/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/skus/bulk/route.ts) dengan dukungan backward-compatibility jika user menempel 4, 5, 6, maupun 7 kolom lama.
+3. **Penyelarasan Tampilan Tabel Master SKU**:
+   - Menambahkan field `avgCost` ke `interface SKU`.
+   - Mengubah cell rendering tabel Master SKU:
+     ```tsx
+     const effectiveHpp = sku.avgCost ?? sku.hppPrice ?? 0;
+     ```
+   - Sekarang nilai HPP mutasi pembelian dan produksi (misal SBN Rp 4.285,71) langsung tampil akurat di halaman utama Master SKU.
+
+---
+
+## 12. Perubahan 12: Rekonstruksi Seeder Database Sesuai Siklus Riil Excel AGUSTUS 2026
+
+### 📌 Masalah Sebelumnya
+Seeder awal (`prisma/seed-demo.ts`) menggunakan nilai HPP dan stok awal yang langsung di-*hardcode* di Master SKU dan Master Kemasan sebelum ada transaksi belanja/produksi, sehingga tidak mendemonstrasikan rantai akuntansi natural.
+
+### 💡 Solusi Baru
+File [prisma/seed-demo.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/prisma/seed-demo.ts) disusun ulang mengikuti siklus hidup riil dari file sheet referensi `documentation/reference_seeder/Copy of Copy of AGUSTUS 2026.xlsx`:
+1. **Master Kemasan**: Menggunakan harga beli riil dari sheet `RECENT PURCHASE` & `COGS RAW`:
+   - `BTL1` (Botol 1L) = Rp 4.147,69
+   - `FOM3` (Botol Foam 100ml) = Rp 4.882,74
+   - `SLTP` (Sealtape) = Rp 146,03
+   - `DUS2` (Dus 6x6x17) = Rp 425,38
+   - `DUS3` (Dus 20x10x5) = Rp 673,52
+2. **Master SKU**: Seluruh SKU (`RAW`, `PRODUCT`, `PACKAGE`) diinisialisasi dengan `hppPrice: 0`.
+3. **Pembelian Bahan Mentah Riil**: Transaksi pembelian bahan mentah (`AQDS`, `SDT`, `ESD`, `SBN`, Parfum) dicatat di `Purchase`, yang untuk pertama kali membentuk `avgCost` bahan baku via *Weighted Average*.
+4. **Produksi BOM**: Sesi produksi dijalankan mengonsumsi bahan + kemasan, menghasilkan produk jadi (`PFCKBG`, `BES`, `SBN1-PBG`) dengan HPP otomatis sesuai kalkulasi BOM (contoh: `PFCKBG` menghasilkan HPP Rp 6.949,40 persis seperti di sheet Shopee).
+5. **Penjualan Marketplace Riil**: Memasukkan sampel pesanan asli dari sheet `SHOPEE` (Order `260801733136US`, `26080173VP8HCU`) dan `TOKOPEDIA` (Order `585309524893730473`) lengkap dengan nomor resi kurir, platform fee, omset, dan laba riil.
+
+---
+
+## 13. Tabel Cheatsheet Ringkasan
 
 | Area Perubahan | File Terkait | Apa Masalahnya? | Apa Solusinya? |
 |---|---|---|---|
+| **Pemisah Ribuan (Format ID)** | [NumberInput.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/ui/NumberInput.tsx), seluruh modal | Angka nominal di modal tanpa titik ribuan, staf rentan salah input digit nol (50.000 vs 500.000). | Komponen terpusat `NumberInput` dengan titik ribuan real-time, prefix `Rp`, suffix unit, dan live preview. |
+| **HPP Dinamis SKU** | [page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/master-sku/page.tsx), [AddEditSKUModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddEditSKUModal.tsx) | Tabel SKU membaca `hppPrice` (statis = 0), sehingga saat beli bahan HPP tetap tampil Rp 0. | Tabel & Modal membaca `sku.avgCost ?? sku.hppPrice ?? 0` dinamis dari mutasi `SKUCostHistory`. |
+| **Bulk Paste 6 Kolom** | [bulk/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/skus/bulk/route.ts), [page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/master-sku/page.tsx) | Format bulk paste menuntut 7 kolom termasuk HPP, padahal di spreadsheet asli tidak ada kolom HPP. | Distandarkan ke 6 kolom tanpa HPP (`KODE [TAB] NAMA [TAB] TIPE [TAB] UKURAN_ML [TAB] HARGA_JUAL [TAB] STOK_MIN`). |
+| **Seeder Siklus Riil** | [seed-demo.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/prisma/seed-demo.ts) | Nilai HPP hardcoded sejak registrasi SKU, tidak mencerminkan data aktual Excel AGUSTUS 2026. | SKU mulai dari HPP 0 $\to$ Belanja RAW & Kemasan $\to$ Produksi BOM $\to$ Penjualan Shopee/Tokopedia riil. |
 | **Discrepancy Flow** | [bulk/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/sales/bulk/route.ts), [schema.prisma](file:///d:/File%20Fahri/Semester%208/taetaa-project/prisma/schema.prisma), [DiscrepancyModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/DiscrepancyModal.tsx) | Selisih scan vs finance langsung ditimpa dan infonya hilang. | Diberi status `SELISIH_QTY`, ditahan, dan diselesaikan lewat modal konfirmasi (Accept Logistic vs Finance). |
 | **N+1 Query** | [inventory/summary/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/inventory/summary/route.ts) | Kueri DB ratusan kali di dalam loop SKU. | Kueri ditarik sekaligus di awal via `Promise.all` dan dipetakan di memori server. |
 | **Dashboard Query** | [dashboard/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/dashboard/route.ts) | Tabel `Inventory` ditarik seluruhnya tanpa filter tanggal. | Menggunakan snapshot `SKUCostHistory` + `SKU` ($O(N_{\text{SKU}})$ alih-alih $O(N_{\text{movements}})$). |
@@ -407,7 +481,7 @@ ok 2 - Validation Schemas
 | **Data Retur** | [sales/[id]/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/sales/[id]/route.ts), [schema.prisma](file:///d:/File%20Fahri/Semester%208/taetaa-project/prisma/schema.prisma) | Tabel `Return` tidak terhubung ke `Sale`. | Dihubungkan via foreign key dan otomatis mencatat riwayat saat order diubah ke `DIRETURN`. |
 | **Validasi API** | `lib/validations/`, route handlers | Input negatif atau tipe salah lolos ke database. | Proteksi skema otomatis menggunakan pustaka **Zod**. |
 | **Scanner Modal** | [ScannerModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/ScannerModal.tsx), [useScannerFlow.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/hooks/useScannerFlow.ts) | File monolitik >780 baris mencampur UI dan logika. | Logika dipisah ke custom hook `useScannerFlow`. |
-| **Pengujian** | `tests/*.test.ts`, [package.json](file:///d:/File%20Fahri/Semester%208/taetaa-project/package.json) | 0 automated test; rentan regresi saat diubah. | Test suite otomatis via `npm test` (15/15 tes lolos). |
+| **Pengujian** | `tests/*.test.ts`, [package.json](file:///d:/File%20Fahri/Semester%208/taetaa-project/package.json) | 0 automated test; rentan regresi saat diubah. | Test suite otomatis via `npm test` (18/18 tes lolos). |
 
 ---
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { colors } from '@/lib/theme';
 import { Button } from '@/components/ui/Button';
+import { NumberInput } from '@/components/ui/NumberInput';
 
 interface BOMComponentInput {
   childId: string;
@@ -62,7 +63,7 @@ export function AddEditSKUModal({
           name: initialData.name || '',
           type: initialData.type || 'RAW',
           productSize: initialData.productSize || 0,
-          hppPrice: initialData.hppPrice || 0,
+          hppPrice: initialData.avgCost ?? initialData.hppPrice ?? 0,
           sellingPrice: initialData.sellingPrice,
           stockMin: initialData.stockMin !== undefined ? initialData.stockMin : 0,
           bomComponents: initialData.bomComponents ? initialData.bomComponents.map((b: any) => ({
@@ -253,74 +254,50 @@ export function AddEditSKUModal({
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
-                  Product Size (ml)
+                  Product Size (Kapasitas Isi)
                 </label>
-                <input
-                  type="number"
+                <NumberInput
                   value={formData.productSize}
-                  onChange={(e) => setFormData({ ...formData, productSize: parseFloat(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 rounded border text-sm focus:outline-none focus:ring-2"
-                  style={{ borderColor: colors.neutral.border, '--tw-ring-color': colors.brand[500] } as any}
+                  onChange={(val) => setFormData({ ...formData, productSize: val })}
+                  suffix="ml"
+                  className="border focus:ring-2 bg-white"
+                  style={{ borderColor: colors.neutral.border } as any}
                   disabled={isLoading}
                   placeholder="0"
+                  showPreview
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
-                  Harga HPP (Biaya Modal)
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    value={formData.hppPrice}
-                    onChange={(e) => setFormData({ ...formData, hppPrice: parseFloat(e.target.value) || 0 })}
-                    className="flex-1 px-3 py-2 rounded border text-sm focus:outline-none focus:ring-2"
-                    style={{ borderColor: colors.neutral.border, '--tw-ring-color': colors.brand[500] } as any}
-                    disabled={isLoading}
-                    placeholder="0"
-                  />
-                  {formData.bomComponents.length > 0 && (
-                    <Button 
-                      type="button" 
-                      variant="secondary" 
-                      size="sm"
-                      onClick={() => {
-                        const calculatedHPP = formData.bomComponents.reduce((sum, comp) => {
-                          // This is a simplified calculation in UI
-                          // Real calculation should involve child's latest avgCost
-                          // For now, we use a placeholder or assume the user will adjust
-                          return sum;
-                        }, 0);
-                        // showToast({ message: 'Fitur kalkulasi HPP otomatis sedang disiapkan', type: 'info' });
-                      }}
-                      title="Hitung dari BOM"
-                    >
-                      🧮
-                    </Button>
-                  )}
+              <div className="p-3 rounded-lg bg-gray-50 border border-gray-200">
+                <div className="flex items-center justify-between text-gray-500 font-medium">
+                  <span className="font-bold uppercase tracking-wider text-[10px] text-gray-500">Harga HPP (Dinamis)</span>
+                  <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-semibold border border-blue-200">
+                    Otomatis Sistem
+                  </span>
                 </div>
+                <div className="text-base font-bold text-gray-900 mt-1">
+                  {formData.hppPrice > 0 ? `Rp ${formData.hppPrice % 1 === 0 ? formData.hppPrice.toLocaleString('id-ID') : formData.hppPrice.toLocaleString('id-ID', { maximumFractionDigits: 2 })}` : 'Rp 0'}
+                </div>
+                <p className="text-[11px] text-gray-400 mt-0.5 leading-tight">
+                  Tidak perlu diinput manual. HPP otomatis dihitung dari histori transaksi Pembelian RAW (Weighted Average) atau kalkulasi BOM saat Produksi.
+                </p>
               </div>
 
               {formData.type === 'PACKAGE' && (
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
-                    Harga Jual (Rp)
+                    Harga Jual (Khusus PACKAGE)
                   </label>
-                  <input
-                    type="number"
-                    value={formData.sellingPrice || ''}
-                    onChange={(e) => setFormData({ ...formData, sellingPrice: e.target.value ? parseInt(e.target.value) : undefined })}
-                    className="w-full px-3 py-2 rounded border text-sm focus:outline-none focus:ring-2"
-                    style={{ borderColor: colors.neutral.border, '--tw-ring-color': colors.brand[500] } as any}
+                  <NumberInput
+                    value={formData.sellingPrice}
+                    onChange={(val) => setFormData({ ...formData, sellingPrice: val || undefined })}
+                    prefix="Rp "
+                    className="border focus:ring-2 bg-white"
+                    style={{ borderColor: colors.neutral.border } as any}
                     disabled={isLoading}
                     placeholder="0"
+                    showPreview
                   />
-                  {formData.sellingPrice && (
-                    <p className="mt-1 text-[10px] text-gray-500 font-medium">
-                      Format: Rp {formData.sellingPrice.toLocaleString('id-ID')}
-                    </p>
-                  )}
                 </div>
               )}
 
@@ -328,18 +305,18 @@ export function AddEditSKUModal({
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
                   Stok Minimum (Opsional)
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={formData.stockMin ?? ''}
-                  onChange={(e) => setFormData({ 
+                <NumberInput
+                  value={formData.stockMin ?? 0}
+                  onChange={(val) => setFormData({ 
                     ...formData, 
-                    stockMin: e.target.value === '' ? null : parseFloat(e.target.value) 
+                    stockMin: val === 0 ? null : val 
                   })}
-                  className="w-full px-3 py-2 rounded border text-sm focus:outline-none focus:ring-2"
-                  style={{ borderColor: colors.neutral.border, '--tw-ring-color': colors.brand[500] } as any}
+                  suffix="unit"
+                  className="border focus:ring-2 bg-white"
+                  style={{ borderColor: colors.neutral.border } as any}
                   disabled={isLoading}
-                  placeholder="0 (atau kosongkan jika tanpa threshold)"
+                  placeholder="0 (atau kosongkan)"
+                  showPreview
                 />
                 <p className="mt-1 text-[10px] text-gray-500">
                   Peringatan restock aktif jika stok &lt; stok minimum. Isi 0 atau kosongkan jika tanpa batas minimum.
@@ -385,19 +362,16 @@ export function AddEditSKUModal({
                     </select>
                   </div>
                   <div className="flex gap-2">
-                    <div className="flex-1 relative">
-                      <input
-                        type="number"
-                        step="any"
-                        value={selectedQty || ''}
-                        onChange={(e) => setSelectedQty(parseFloat(e.target.value))}
-                        className="w-full px-3 py-2 rounded border text-sm"
-                        style={{ borderColor: colors.neutral.border }}
+                    <div className="flex-1">
+                      <NumberInput
+                        value={selectedQty}
+                        onChange={(val) => setSelectedQty(val)}
+                        allowDecimal
+                        suffix={selectedCategory === 'RAW' ? 'UNIT' : 'PCS'}
+                        className="border bg-white"
+                        style={{ borderColor: colors.neutral.border } as any}
                         placeholder={selectedCategory === 'RAW' ? "Qty Unit (cth: 0.05)" : "Qty (pcs)"}
                       />
-                      <span className="absolute right-3 top-2 text-[10px] text-gray-400 font-bold">
-                        {selectedCategory === 'RAW' ? 'UNIT' : 'PCS'}
-                      </span>
                     </div>
                     <Button type="button" variant="secondary" onClick={addComponent} style={{ width: '100px' }}>
                       Add

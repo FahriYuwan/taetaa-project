@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/header/PageHeader';
 import { Button, Badge } from '@/components/ui/Button';
+import { NumberInput } from '@/components/ui/NumberInput';
 import { ConfirmDialog } from '@/components/modals/ConfirmDialog';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
@@ -259,20 +260,22 @@ function KemasanModal({ item, isLoading, onClose, onSubmit }: any) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Stok Awal</label>
-              <input 
-                type="number" 
-                className="w-full px-3 py-2 border rounded text-sm" 
+              <NumberInput 
+                className="border bg-white" 
                 value={formData.stock} 
-                onChange={e => setFormData({...formData, stock: parseFloat(e.target.value) || 0})}
+                onChange={(val) => setFormData({...formData, stock: val})}
+                suffix="pcs"
+                showPreview
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Avg Cost (Rp)</label>
-              <input 
-                type="number" 
-                className="w-full px-3 py-2 border rounded text-sm" 
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Avg Cost (Biaya Beli)</label>
+              <NumberInput 
+                className="border bg-white font-bold" 
+                prefix="Rp "
                 value={formData.avgCost} 
-                onChange={e => setFormData({...formData, avgCost: parseFloat(e.target.value) || 0})}
+                onChange={(val) => setFormData({...formData, avgCost: val})}
+                showPreview
               />
             </div>
           </div>

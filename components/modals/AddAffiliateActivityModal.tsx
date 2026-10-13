@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { colors } from '@/lib/theme';
 import { Button } from '@/components/ui/Button';
+import { NumberInput } from '@/components/ui/NumberInput';
 
 interface AddAffiliateActivityModalProps {
   isOpen: boolean;
@@ -73,7 +74,7 @@ export function AddAffiliateActivityModal({
   if (!isOpen) return null;
 
   const selectedSku = skus.find((s) => s.id === formData.skuId);
-  const hppPerUnit = selectedSku?.hppPrice || 0;
+  const hppPerUnit = selectedSku?.avgCost ?? selectedSku?.hppPrice ?? 0;
   const hppTerpakai = hppPerUnit * (formData.qty || 0);
   const totalBiaya = hppTerpakai + (Number(formData.shippingCost) || 0);
 
@@ -201,11 +202,14 @@ export function AddAffiliateActivityModal({
                 required
               >
                 <option value="">Pilih SKU...</option>
-                {skus.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    [{s.type}] {s.code} - {s.name} (HPP: Rp {(s.hppPrice || 0).toLocaleString('id-ID')})
-                  </option>
-                ))}
+                {skus.map((s) => {
+                  const itemHpp = s.avgCost ?? s.hppPrice ?? 0;
+                  return (
+                    <option key={s.id} value={s.id}>
+                      [{s.type}] {s.code} - {s.name} (HPP: Rp {itemHpp.toLocaleString('id-ID')})
+                    </option>
+                  );
+                })}
               </select>
             </div>
           </div>
@@ -216,16 +220,16 @@ export function AddAffiliateActivityModal({
               <label className="block text-xs font-bold uppercase tracking-wider mb-1 text-gray-700">
                 Jumlah Qty (Unit) *
               </label>
-              <input
-                type="number"
-                min="1"
-                step="1"
+              <NumberInput
                 value={formData.qty}
-                onChange={(e) => setFormData({ ...formData, qty: parseFloat(e.target.value) || 0 })}
-                className="w-full px-3 py-2 rounded border text-sm font-bold"
-                style={{ borderColor: colors.neutral.border }}
+                onChange={(val) => setFormData({ ...formData, qty: val })}
+                suffix="unit"
+                min={1}
+                className="border bg-white font-bold"
+                style={{ borderColor: colors.neutral.border } as any}
                 disabled={isLoading}
-                required
+                placeholder="1"
+                showPreview
               />
             </div>
 
@@ -248,17 +252,17 @@ export function AddAffiliateActivityModal({
             {/* Biaya Pengiriman */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider mb-1 text-gray-700">
-                Biaya Pengiriman (Rp)
+                Biaya Pengiriman
               </label>
-              <input
-                type="number"
-                min="0"
-                step="500"
+              <NumberInput
                 value={formData.shippingCost}
-                onChange={(e) => setFormData({ ...formData, shippingCost: parseFloat(e.target.value) || 0 })}
-                className="w-full px-3 py-2 rounded border text-sm"
-                style={{ borderColor: colors.neutral.border }}
+                onChange={(val) => setFormData({ ...formData, shippingCost: val })}
+                prefix="Rp "
+                className="border bg-white"
+                style={{ borderColor: colors.neutral.border } as any}
                 disabled={isLoading}
+                placeholder="0"
+                showPreview
               />
             </div>
           </div>

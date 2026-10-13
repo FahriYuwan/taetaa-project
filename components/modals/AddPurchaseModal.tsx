@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { colors } from '@/lib/theme';
 import { Button } from '@/components/ui/Button';
+import { NumberInput } from '@/components/ui/NumberInput';
 
 interface AddPurchaseModalProps {
   isOpen: boolean;
@@ -128,29 +129,30 @@ export function AddPurchaseModal({
               <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
                 Qty
               </label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.qty || ''}
-                onChange={(e) => setFormData({ ...formData, qty: parseFloat(e.target.value) || 0 })}
-                className="w-full px-3 py-2 rounded border text-sm"
-                style={{ borderColor: colors.neutral.border }}
+              <NumberInput
+                value={formData.qty}
+                onChange={(val) => setFormData({ ...formData, qty: val })}
+                allowDecimal
+                className="border bg-white"
+                style={{ borderColor: colors.neutral.border } as any}
                 disabled={isLoading}
                 placeholder="0"
+                showPreview
               />
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
-                Harga Satuan (Rp)
+                Harga Satuan
               </label>
-              <input
-                type="number"
-                value={formData.unitPrice || ''}
-                onChange={(e) => setFormData({ ...formData, unitPrice: parseInt(e.target.value) || 0 })}
-                className="w-full px-3 py-2 rounded border text-sm"
-                style={{ borderColor: colors.neutral.border }}
+              <NumberInput
+                value={formData.unitPrice}
+                onChange={(val) => setFormData({ ...formData, unitPrice: val })}
+                prefix="Rp "
+                className="border bg-white font-bold"
+                style={{ borderColor: colors.neutral.border } as any}
                 disabled={isLoading}
                 placeholder="0"
+                showPreview
               />
             </div>
           </div>

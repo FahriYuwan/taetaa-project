@@ -50,3 +50,11 @@ _Avoid_: Modal satuan, harga beli per botol.
 **Laba Bersih (Net Profit)**:
 Keuntungan atau kerugian riil per transaksi (`Omset - Total HPP`). Bernilai negatif (`-Rp X`) pada transaksi berstatus `Hilang` atau `Return`.
 _Avoid_: Margin kotor, keuntungan kotor.
+
+**Satuan Kuantitas Stok (Inventory Unit)**:
+Kuantitas unit fisik terhitung (misalnya jumlah jerigen, botol, pcs) yang dicatat pada transaksi inventaris dan kartu stok. Satu unit stok selalu mewakili 1 wadah/kemasan utuh dari SKU terkait, bukan akumulasi volume cairan bebas.
+_Avoid_: Total liter, volume stok, isi cairan.
+
+**Ukuran Kemasan SKU (Product Size / Pack Size)**:
+Kapasitas atau isi volume tetap per 1 unit kemasan produk (dinyatakan dalam ml). Nilai ini melekat pada definisi Master SKU dan digunakan sebagai faktor pembagi rasio BOM saat proses produksi. Jika barang yang sama dibeli dalam kapasitas berbeda (misal 20 Liter vs 5 Liter), keduanya merupakan dua SKU yang berbeda dengan ukuran masing-masing.
+_Avoid_: Kuantitas persediaan, berat paket.
