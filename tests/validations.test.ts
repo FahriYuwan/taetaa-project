@@ -63,7 +63,7 @@ describe('Validation Schemas', () => {
   });
 
   describe('createPurchaseSchema', () => {
-    it('passes with valid purchase payload', () => {
+    it('passes with valid purchase payload for SKU', () => {
       const payload = {
         date: '2026-10-07',
         skuId: 'sku-raw-1',
@@ -73,6 +73,28 @@ describe('Validation Schemas', () => {
       };
       const result = validateBody(createPurchaseSchema, payload);
       assert.equal(result.success, true);
+    });
+
+    it('passes with valid purchase payload for Kemasan', () => {
+      const payload = {
+        date: '2026-10-07',
+        kemasanId: 'kemasan-btl-1',
+        qty: 50,
+        unitPrice: 4200,
+        supplier: 'Pabrik Botol',
+      };
+      const result = validateBody(createPurchaseSchema, payload);
+      assert.equal(result.success, true);
+    });
+
+    it('rejects when neither skuId nor kemasanId is provided', () => {
+      const payload = {
+        date: '2026-10-07',
+        qty: 10,
+        unitPrice: 1000,
+      };
+      const result = validateBody(createPurchaseSchema, payload);
+      assert.equal(result.success, false);
     });
 
     it('rejects negative unit price', () => {

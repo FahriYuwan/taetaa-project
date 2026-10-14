@@ -1,8 +1,9 @@
 // Design tokens from addendum_design_system_dan_ux.md
 export const colors = {
   brand: {
-    500: '#1E88E5',
     400: '#4FC3F7',
+    500: '#1E88E5',
+    600: '#1976D2',
     700: '#1257A6',
     gradient: 'linear-gradient(135deg, #4FC3F7 0%, #1E88E5 55%, #1257A6 100%)',
   },

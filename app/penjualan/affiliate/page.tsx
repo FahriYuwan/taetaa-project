@@ -9,6 +9,7 @@ import { AddAffiliateActivityModal } from '@/components/modals/AddAffiliateActiv
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
 import { FiTrendingUp, FiGift, FiLayers, FiTrash2, FiPlus } from 'react-icons/fi';
+import { DatePresetFilter } from '@/components/filters/DatePresetFilter';
 
 interface AffiliateItem {
   id: string;
@@ -71,12 +72,8 @@ export default function AffiliatePage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const { showToast } = useToast();
 
-  const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [fromDate, setFromDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return d.toISOString().split('T')[0];
-  });
+  const [toDate, setToDate] = useState('');
+  const [fromDate, setFromDate] = useState('');
 
   useEffect(() => {
     fetchActivities();
@@ -85,7 +82,12 @@ export default function AffiliatePage() {
   async function fetchActivities() {
     try {
       setLoading(true);
-      const res = await fetch(`/api/affiliate?from=${fromDate}&to=${toDate}`);
+      const params = new URLSearchParams();
+      if (fromDate) params.set('from', fromDate);
+      if (toDate) params.set('to', toDate);
+      const query = params.toString() ? `?${params.toString()}` : '';
+
+      const res = await fetch(`/api/affiliate${query}`);
       if (res.ok) {
         const data = await res.json();
         setItems(data.items || []);
@@ -151,22 +153,14 @@ export default function AffiliatePage() {
         subtitle="Pencatatan barang keluar untuk promosi Affiliate dan Non-Affiliate. Terintegrasi langsung dengan mutasi stok SKU."
         actions={
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded border" style={{ borderColor: colors.neutral.border }}>
-              <span className="text-xs text-gray-500 font-medium">Periode:</span>
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="text-xs text-gray-700 focus:outline-none"
-              />
-              <span className="text-xs text-gray-400">s/d</span>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="text-xs text-gray-700 focus:outline-none"
-              />
-            </div>
+            <DatePresetFilter
+              fromDate={fromDate}
+              toDate={toDate}
+              onDateChange={(from, to) => {
+                setFromDate(from);
+                setToDate(to);
+              }}
+            />
             <Button variant="primary" icon={<FiPlus size={16} />} onClick={() => setShowAddModal(true)}>
               Catat Aktivitas
             </Button>

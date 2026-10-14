@@ -29,6 +29,7 @@ import {
 } from '@/components/penjualan/types';
 import { MarketplaceCompactTable } from '@/components/penjualan/MarketplaceCompactTable';
 import { MarketplaceDetailedTable } from '@/components/penjualan/MarketplaceDetailedTable';
+import { DatePresetFilter } from '@/components/filters/DatePresetFilter';
 
 export default function PenjualanMarketplacePage() {
   const [sales, setSales] = useState<Sale[]>([]);
@@ -243,71 +244,12 @@ export default function PenjualanMarketplacePage() {
         title="Penjualan Marketplace"
         subtitle="Kelola penjualan dengan alur scan logistik & bulk paste finance"
         actions={
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Date Filters */}
-            <div
-              className="flex items-center gap-2 bg-white px-3 py-1.5 rounded border"
-              style={{ borderColor: colors.neutral.border }}
-            >
-              <span className="text-xs text-gray-500 font-medium">Periode:</span>
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="text-xs text-gray-700 focus:outline-none"
-              />
-              <span className="text-xs text-gray-400">s/d</span>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="text-xs text-gray-700 focus:outline-none"
-              />
-              {(fromDate || toDate) && (
-                <button
-                  onClick={() => { setFromDate(''); setToDate(''); }}
-                  className="text-xs text-gray-400 hover:text-gray-600 ml-1"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            {/* Channel Filter */}
-            <select
-              value={channelFilter}
-              onChange={(e) => setChannelFilter(e.target.value)}
-              className="px-3 py-1.5 rounded border text-xs bg-white font-medium"
-              style={{ borderColor: colors.neutral.border }}
-            >
-              <option value="all">Semua Channel</option>
-              <option value="SHOPEE">Shopee</option>
-              <option value="TIKTOK">TikTok Shop</option>
-              <option value="TOKOPEDIA">Tokopedia</option>
-              <option value="OFFLINE">Offline</option>
-              <option value="AFFILIATE">Affiliate</option>
-            </select>
-
-            {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-1.5 rounded border text-xs bg-white font-medium"
-              style={{ borderColor: colors.neutral.border }}
-            >
-              <option value="all">Semua Status</option>
-              <option value="DITERIMA">Diterima</option>
-              <option value="HILANG">Hilang</option>
-              <option value="RETURN">Return</option>
-              <option value="SELISIH_QTY">Selisih Qty</option>
-            </select>
-
-            {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2.5">
             <Button
               variant="secondary"
               icon={<FiMaximize2 size={15} />}
               onClick={() => setShowScannerModal(true)}
-              className="border-blue-200 text-blue-700 bg-blue-50/50 hover:bg-blue-100 shadow-xs"
+              className="border-blue-200 text-blue-700 bg-blue-50/60 hover:bg-blue-100 shadow-xs"
             >
               Scanner Logistik
             </Button>
@@ -342,9 +284,9 @@ export default function PenjualanMarketplacePage() {
             </div>
             <button
               onClick={() => setShowDiscrepancyModal(true)}
-              className="shrink-0 px-3 py-1.5 text-xs font-bold bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors whitespace-nowrap"
+              className="shrink-0 px-3 py-1.5 text-xs font-bold bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors whitespace-nowrap cursor-pointer"
             >
-              Resolusi Sekarang →
+              Resolusi Sekarang
             </button>
           </div>
         )}
@@ -361,68 +303,148 @@ export default function PenjualanMarketplacePage() {
             </div>
             <button
               onClick={() => setShowDiscrepancyModal(true)}
-              className="shrink-0 px-3 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+              className="shrink-0 px-3 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap cursor-pointer"
             >
-              Lihat Detail →
+              Lihat Detail
             </button>
           </div>
         )}
 
-        {/* Search, View Mode Toggle & Count */}
-        <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center justify-between gap-3">
-          <div className="relative w-full sm:w-72">
-            <FiSearch className="absolute left-3 top-2.5 text-gray-400" size={14} />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari resi, SKU, atau nama produk..."
-              className="w-full pl-9 pr-4 py-1.5 bg-white border rounded text-xs focus:outline-none"
-              style={{ borderColor: colors.neutral.border }}
+        {/* Dedicated Filter & Search Toolbar Card */}
+        <div
+          className="bg-white border rounded-xl p-4 shadow-xs space-y-3"
+          style={{ borderColor: colors.neutral.border }}
+        >
+          {/* Row 1: Date Presets Filter & Channel / Status Selectors */}
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+            {/* Date Preset Filter */}
+            <DatePresetFilter
+              fromDate={fromDate}
+              toDate={toDate}
+              onDateChange={(from, to) => {
+                setFromDate(from);
+                setToDate(to);
+              }}
             />
-            {search && (
-              <button onClick={() => setSearch('')} className="absolute right-3 top-2 text-xs text-gray-400 hover:text-gray-600">
-                ✕
-              </button>
-            )}
+
+            {/* Channel & Status Dropdowns */}
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-gray-600 font-medium">Channel:</span>
+                <select
+                  value={channelFilter}
+                  onChange={(e) => setChannelFilter(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg border text-xs bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  style={{ borderColor: colors.neutral.border }}
+                >
+                  <option value="all">Semua Channel</option>
+                  <option value="SHOPEE">Shopee</option>
+                  <option value="TIKTOK">TikTok Shop</option>
+                  <option value="TOKOPEDIA">Tokopedia</option>
+                  <option value="OFFLINE">Offline</option>
+                  <option value="AFFILIATE">Affiliate</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-gray-600 font-medium">Status:</span>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg border text-xs bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  style={{ borderColor: colors.neutral.border }}
+                >
+                  <option value="all">Semua Status</option>
+                  <option value="DITERIMA">Diterima</option>
+                  <option value="HILANG">Hilang</option>
+                  <option value="RETURN">Return</option>
+                  <option value="SELISIH_QTY">Selisih Qty</option>
+                </select>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-            {/* View Mode Toggle (Ringkas vs Detail) */}
-            <div
-              className="flex items-center p-0.5 rounded-lg border bg-white shadow-2xs gap-0.5"
-              style={{ borderColor: colors.neutral.border }}
-            >
-              <button
-                type="button"
-                onClick={() => handleViewModeChange('compact')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer ${
-                  viewMode === 'compact'
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-                title="Tampilan Ringkas (per Resi)"
-              >
-                <FiList size={14} className={viewMode === 'compact' ? 'text-blue-600' : 'text-gray-500'} />
-                <span>Ringkas</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleViewModeChange('detailed')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer ${
-                  viewMode === 'detailed'
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-                title="Tampilan Detail (Semua Kolom Finansial)"
-              >
-                <FiColumns size={14} className={viewMode === 'detailed' ? 'text-blue-600' : 'text-gray-500'} />
-                <span>Detail</span>
-              </button>
+          {/* Row 2: Search Box, Reset Button, View Mode Toggle & Count */}
+          <div className="pt-3 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderColor: colors.neutral.border }}>
+            {/* Search Input */}
+            <div className="relative w-full sm:w-80">
+              <FiSearch className="absolute left-3 top-2.5 text-gray-400" size={14} />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari resi, SKU, atau nama produk..."
+                className="w-full pl-9 pr-8 py-1.5 bg-gray-50 border rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                style={{ borderColor: colors.neutral.border }}
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2.5 top-2 text-xs text-gray-400 hover:text-gray-600 cursor-pointer p-0.5"
+                  title="Bersihkan Pencarian"
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
-            <div className="text-xs text-gray-500 font-medium whitespace-nowrap">
-              <strong>{orderGroups.length}</strong> resi &nbsp;·&nbsp; <strong>{filteredSales.length}</strong> item
+            {/* Controls: Reset Button, View Mode Toggle & Items Counter */}
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
+              {/* Reset Filter Button if any filter is active */}
+              {(channelFilter !== 'all' || statusFilter !== 'all' || fromDate || toDate || search) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChannelFilter('all');
+                    setStatusFilter('all');
+                    setFromDate('');
+                    setToDate('');
+                    setSearch('');
+                  }}
+                  className="text-xs text-rose-600 hover:text-rose-800 font-bold cursor-pointer py-1 px-2 rounded hover:bg-rose-50 transition-colors"
+                >
+                  Reset Filter
+                </button>
+              )}
+
+              {/* View Mode Toggle (Ringkas vs Detail) */}
+              <div
+                className="flex items-center p-0.5 rounded-lg border bg-gray-50 gap-0.5"
+                style={{ borderColor: colors.neutral.border }}
+              >
+                <button
+                  type="button"
+                  onClick={() => handleViewModeChange('compact')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                    viewMode === 'compact'
+                      ? 'bg-white text-blue-700 shadow-xs border border-gray-200'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                  }`}
+                  title="Tampilan Ringkas (per Resi)"
+                >
+                  <FiList size={14} className={viewMode === 'compact' ? 'text-blue-600' : 'text-gray-500'} />
+                  <span>Ringkas</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleViewModeChange('detailed')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                    viewMode === 'detailed'
+                      ? 'bg-white text-blue-700 shadow-xs border border-gray-200'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                  }`}
+                  title="Tampilan Detail (Semua Kolom Finansial)"
+                >
+                  <FiColumns size={14} className={viewMode === 'detailed' ? 'text-blue-600' : 'text-gray-500'} />
+                  <span>Detail</span>
+                </button>
+              </div>
+
+              {/* Item Counter Badge */}
+              <div className="text-xs text-gray-500 font-medium whitespace-nowrap bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-200">
+                <strong className="text-gray-900">{orderGroups.length}</strong> resi &nbsp;·&nbsp; <strong className="text-gray-900">{filteredSales.length}</strong> item
+              </div>
             </div>
           </div>
         </div>

@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { PageHeader } from '@/components/header/PageHeader';
 import { Button, Badge } from '@/components/ui/Button';
 import { NumberInput } from '@/components/ui/NumberInput';
 import { ConfirmDialog } from '@/components/modals/ConfirmDialog';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
+import { FiShoppingCart, FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
 
 interface KemasanItem {
   id: string;
@@ -97,9 +99,9 @@ export default function MasterKemasanPage() {
     <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: colors.neutral.bg }}>
       <PageHeader
         title="Master Kemasan"
-        subtitle="Kelola item Packing, Stiker, Safety, dan Dus"
+        subtitle="Kelola item Packing, Stiker, Safety, dan Dus. HPP otomatis terupdate saat mencatat pembelian."
         actions={
-          <div className="flex gap-3">
+          <div className="flex gap-2.5">
             <input
               type="text"
               placeholder="Cari Kode / Nama..."
@@ -108,7 +110,12 @@ export default function MasterKemasanPage() {
               className="px-4 py-2 rounded border text-sm"
               style={{ borderColor: colors.neutral.border }}
             />
-            <Button variant="primary" icon="➕" onClick={() => setShowAddModal(true)}>
+            <Link href="/pembelian-raw">
+              <Button variant="secondary" icon={<FiShoppingCart size={15} />}>
+                Beli Kemasan
+              </Button>
+            </Link>
+            <Button variant="primary" icon={<FiPlus size={15} />} onClick={() => setShowAddModal(true)}>
               Tambah Item
             </Button>
           </div>
@@ -161,7 +168,7 @@ export default function MasterKemasanPage() {
                 <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500">NAMA</th>
                 <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wide text-gray-500">KATEGORI</th>
                 <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide text-gray-500">STOK</th>
-                <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide text-gray-500">AVG COST</th>
+                <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide text-gray-500">HARGA HPP</th>
                 <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wide text-gray-500">AKSI</th>
               </tr>
             </thead>
@@ -174,13 +181,29 @@ export default function MasterKemasanPage() {
                     <span className="px-2.5 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">{item.category}</span>
                   </td>
                   <td className="px-6 py-4 text-right text-sm">{item.stock.toLocaleString('id-ID')}</td>
-                  <td className="px-6 py-4 text-right text-sm font-medium" style={{ color: colors.brand[500] }}>
-                    Rp {item.avgCost.toLocaleString('id-ID')}
+                  <td className="px-6 py-4 text-right text-sm font-medium" style={{ color: colors.neutral.textStrong }}>
+                    {item.avgCost > 0
+                      ? `Rp ${item.avgCost % 1 === 0 ? item.avgCost.toLocaleString('id-ID') : item.avgCost.toLocaleString('id-ID', { maximumFractionDigits: 2 })}`
+                      : 'Rp 0'}
                   </td>
                   <td className="px-6 py-4 text-center">
                     <div className="flex items-center justify-center gap-2">
-                      <button className="text-lg hover:opacity-70" onClick={() => { setEditingItem(item); setShowAddModal(true); }} title="Edit Item">✏️</button>
-                      <button className="text-lg hover:opacity-70" onClick={() => setDeletingItemId(item.id)} title="Hapus Item">🗑️</button>
+                      <button
+                        className="p-1 text-gray-500 hover:text-blue-600 rounded transition-colors cursor-pointer"
+                        onClick={() => { setEditingItem(item); setShowAddModal(true); }}
+                        title="Edit Item"
+                        aria-label="Edit Item"
+                      >
+                        <FiEdit2 size={16} />
+                      </button>
+                      <button
+                        className="p-1 text-gray-500 hover:text-rose-600 rounded transition-colors cursor-pointer"
+                        onClick={() => setDeletingItemId(item.id)}
+                        title="Hapus Item"
+                        aria-label="Hapus Item"
+                      >
+                        <FiTrash2 size={16} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -213,6 +236,7 @@ export default function MasterKemasanPage() {
 }
 
 function KemasanModal({ item, isLoading, onClose, onSubmit }: any) {
+  const isEditing = !!item;
   const [formData, setFormData] = useState({
     code: item?.code || '',
     name: item?.name || '',
@@ -221,65 +245,124 @@ function KemasanModal({ item, isLoading, onClose, onSubmit }: any) {
     avgCost: item?.avgCost || 0,
   });
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isLoading) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLoading, onClose]);
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
-        <h3 className="text-lg font-bold mb-4">{item ? 'Edit' : 'Tambah'} Item Kemasan</h3>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto py-6">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl mx-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-gray-900">{isEditing ? 'Edit Item Kemasan' : 'Tambah Item Kemasan'}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 cursor-pointer" aria-label="Tutup Modal">✕</button>
+        </div>
+
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Kode Item</label>
+            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Kode Item</label>
             <input 
-              className="w-full px-3 py-2 border rounded text-sm" 
+              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
               value={formData.code} 
               onChange={e => setFormData({...formData, code: e.target.value})}
               placeholder="Contoh: BTL1"
+              disabled={isLoading}
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nama / Deskripsi</label>
+            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nama / Deskripsi</label>
             <input 
-              className="w-full px-3 py-2 border rounded text-sm" 
+              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
               value={formData.name} 
               onChange={e => setFormData({...formData, name: e.target.value})}
               placeholder="Contoh: Botol 1 Liter"
+              disabled={isLoading}
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Kategori</label>
+            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Kategori</label>
             <select 
-              className="w-full px-3 py-2 border rounded text-sm bg-white" 
+              className="w-full px-3 py-2 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer" 
               value={formData.category} 
               onChange={e => setFormData({...formData, category: e.target.value})}
+              disabled={isLoading}
             >
-              <option value="PACKING">PACKING</option>
-              <option value="STIKER">STIKER</option>
-              <option value="SAFETY">SAFETY</option>
-              <option value="DUS">DUS</option>
+              <option value="PACKING">PACKING (Botol, Jerigen, Cup)</option>
+              <option value="STIKER">STIKER (Label Depan/Belakang)</option>
+              <option value="SAFETY">SAFETY (Sealtape, Bubble, Plastik Wrapping)</option>
+              <option value="DUS">DUS (Box Kemasan Luar)</option>
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Stok Awal</label>
-              <NumberInput 
-                className="border bg-white" 
-                value={formData.stock} 
-                onChange={(val) => setFormData({...formData, stock: val})}
-                suffix="pcs"
-                showPreview
-              />
+
+          {/* Kondisi Mode Edit vs Mode Tambah Baru */}
+          {isEditing ? (
+            <div className="p-3.5 rounded-lg bg-gray-50 border border-gray-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold uppercase tracking-wider text-[10px] text-gray-500">Stok & HPP Terkini</span>
+                <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-semibold border border-blue-200">
+                  Otomatis Sistem
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-4 pt-1">
+                <div>
+                  <span className="text-xs text-gray-500">Saldo Stok Gudang</span>
+                  <div className="text-sm font-bold text-gray-900 mt-0.5">
+                    {formData.stock.toLocaleString('id-ID')} pcs
+                  </div>
+                </div>
+                <div>
+                  <span className="text-xs text-gray-500">Harga HPP Rata-rata</span>
+                  <div className="text-sm font-bold text-gray-900 mt-0.5">
+                    {formData.avgCost > 0
+                      ? `Rp ${formData.avgCost % 1 === 0 ? formData.avgCost.toLocaleString('id-ID') : formData.avgCost.toLocaleString('id-ID', { maximumFractionDigits: 2 })}`
+                      : 'Rp 0'}
+                  </div>
+                </div>
+              </div>
+              <p className="text-[11px] text-gray-500 pt-1.5 border-t border-gray-200 leading-tight">
+                *Stok dan HPP kemasan tidak diubah manual. Saldo akan bertambah saat mencatat nota di menu <strong className="text-gray-700">Pembelian Bahan & Kemasan</strong> atau berkurang saat <strong className="text-gray-700">Produksi</strong>.
+              </p>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Avg Cost (Biaya Beli)</label>
-              <NumberInput 
-                className="border bg-white font-bold" 
-                prefix="Rp "
-                value={formData.avgCost} 
-                onChange={(val) => setFormData({...formData, avgCost: val})}
-                showPreview
-              />
+          ) : (
+            <div className="space-y-3">
+              <div className="p-3 rounded-lg bg-blue-50/70 border border-blue-200 text-xs text-blue-800 leading-relaxed">
+                <strong>Catatan Saldo Awal:</strong> Kolom di bawah hanya diisi jika Anda memiliki sisa stok saat migrasi sistem awal. Jika memulai dari nol, isi <strong>0</strong> dan catat belanja masuk melalui menu <strong>Pembelian Bahan & Kemasan</strong>.
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Stok Awal (Opsional)</label>
+                  <NumberInput 
+                    className="border bg-white" 
+                    value={formData.stock} 
+                    onChange={(val) => setFormData({...formData, stock: val})}
+                    suffix="pcs"
+                    showPreview
+                    placeholder="0"
+                    disabled={isLoading}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 uppercase mb-1">HPP Saldo Awal</label>
+                  <NumberInput 
+                    className="border bg-white font-bold" 
+                    prefix="Rp "
+                    value={formData.avgCost} 
+                    onChange={(val) => setFormData({...formData, avgCost: val})}
+                    showPreview
+                    placeholder="0"
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
+
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="secondary" onClick={onClose} disabled={isLoading}>Batal</Button>
           <Button variant="primary" onClick={() => onSubmit(formData)} disabled={isLoading}>

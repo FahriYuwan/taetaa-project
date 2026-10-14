@@ -8,7 +8,8 @@ import { NumberInput } from '@/components/ui/NumberInput';
 import { ConfirmDialog } from '@/components/modals/ConfirmDialog';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
-import { FiDollarSign } from 'react-icons/fi';
+import { FiDollarSign, FiPlus } from 'react-icons/fi';
+import { DatePresetFilter } from '@/components/filters/DatePresetFilter';
 
 interface Expense {
   id: string;
@@ -27,12 +28,8 @@ export default function PengeluaranLainPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [fromDate, setFromDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return d.toISOString().split('T')[0];
-  });
+  const [toDate, setToDate] = useState('');
+  const [fromDate, setFromDate] = useState('');
 
   useEffect(() => {
     fetchExpenses();
@@ -41,7 +38,12 @@ export default function PengeluaranLainPage() {
   async function fetchExpenses() {
     try {
       setLoading(true);
-      const res = await fetch(`/api/expenses?from=${fromDate}&to=${toDate}`);
+      const params = new URLSearchParams();
+      if (fromDate) params.set('from', fromDate);
+      if (toDate) params.set('to', toDate);
+      const query = params.toString() ? `?${params.toString()}` : '';
+
+      const res = await fetch(`/api/expenses${query}`);
       if (res.ok) {
         const data = await res.json();
         setExpenses(data);
@@ -116,23 +118,16 @@ export default function PengeluaranLainPage() {
         title="Pengeluaran Lain"
         subtitle="Catat pengeluaran di luar alur bisnis inti (bonus, compliment, dll)."
         actions={
-          <div className="flex gap-3">
-            <div className="flex gap-2">
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="px-3 py-2 border rounded text-xs bg-white"
-              />
-              <span className="self-center text-gray-400">s/d</span>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="px-3 py-2 border rounded text-xs bg-white"
-              />
-            </div>
-            <Button variant="primary" icon="➕" onClick={() => setShowAddModal(true)}>
+          <div className="flex flex-wrap items-center gap-3">
+            <DatePresetFilter
+              fromDate={fromDate}
+              toDate={toDate}
+              onDateChange={(from, to) => {
+                setFromDate(from);
+                setToDate(to);
+              }}
+            />
+            <Button variant="primary" icon={<FiPlus size={16} />} onClick={() => setShowAddModal(true)}>
               Catat Pengeluaran
             </Button>
           </div>

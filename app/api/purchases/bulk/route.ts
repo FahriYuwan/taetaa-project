@@ -16,8 +16,11 @@ export async function POST(req: Request) {
         const [dateStr, skuCode, qtyStr, priceStr, supplier, notes] = line.split('\t');
         if (!dateStr || !skuCode || !qtyStr || !priceStr) continue;
 
-        const sku = await tx.sKU.findUnique({ where: { code: skuCode.trim() } });
-        if (!sku) continue;
+        const itemCode = skuCode.trim();
+        const sku = await tx.sKU.findUnique({ where: { code: itemCode } });
+        const kemasan = !sku ? await tx.masterItemKemasan.findUnique({ where: { code: itemCode } }) : null;
+
+        if (!sku && !kemasan) continue;
 
         const date = new Date(dateStr.trim());
         const qty = parseFloat(qtyStr.trim());
@@ -28,43 +31,57 @@ export async function POST(req: Request) {
         const purchase = await tx.purchase.create({
           data: {
             date,
-            skuId: sku.id,
+            skuId: sku ? sku.id : null,
+            kemasanId: kemasan ? kemasan.id : null,
             qty,
             unitPrice,
             total,
-            supplier: supplier?.trim(),
-            notes: notes?.trim(),
+            supplier: supplier?.trim() || null,
+            notes: notes?.trim() || null,
           },
         });
 
-        // 2. Add to Inventory
-        await tx.inventory.create({
-          data: {
-            date,
-            skuId: sku.id,
-            movement: qty,
-            type: MovementType.PURCHASE,
-            reference: purchase.id,
-          },
-        });
+        if (kemasan) {
+          // Update Kemasan stock and weighted average HPP
+          const oldStock = Math.max(0, kemasan.stock);
+          const oldAvgCost = kemasan.avgCost || 0;
+          const newStock = kemasan.stock + qty;
+          const newAvgCost = ((oldStock * oldAvgCost) + (qty * unitPrice)) / (oldStock + qty);
 
-        // 3. Update HPP (Simple loop for bulk, in production consider optimization)
-        const costHistory = await tx.sKUCostHistory.findUnique({ where: { skuId: sku.id } });
-        if (costHistory) {
-          const oldStock = costHistory.stock;
-          const oldAvgCost = costHistory.avgCost;
-          const newStock = oldStock + qty;
-          const currentStockForAvg = Math.max(0, oldStock);
-          const newAvgCost = ((currentStockForAvg * oldAvgCost) + (qty * unitPrice)) / (currentStockForAvg + qty);
-
-          await tx.sKUCostHistory.update({
-            where: { skuId: sku.id },
+          await tx.masterItemKemasan.update({
+            where: { id: kemasan.id },
             data: { stock: newStock, avgCost: newAvgCost },
           });
-        } else {
-          await tx.sKUCostHistory.create({
-            data: { skuId: sku.id, stock: qty, avgCost: unitPrice },
+        } else if (sku) {
+          // 2. Add to Inventory for SKU
+          await tx.inventory.create({
+            data: {
+              date,
+              skuId: sku.id,
+              movement: qty,
+              type: MovementType.PURCHASE,
+              reference: purchase.id,
+            },
           });
+
+          // 3. Update SKUCostHistory
+          const costHistory = await tx.sKUCostHistory.findUnique({ where: { skuId: sku.id } });
+          if (costHistory) {
+            const oldStock = costHistory.stock;
+            const oldAvgCost = costHistory.avgCost;
+            const newStock = oldStock + qty;
+            const currentStockForAvg = Math.max(0, oldStock);
+            const newAvgCost = ((currentStockForAvg * oldAvgCost) + (qty * unitPrice)) / (currentStockForAvg + qty);
+
+            await tx.sKUCostHistory.update({
+              where: { skuId: sku.id },
+              data: { stock: newStock, avgCost: newAvgCost },
+            });
+          } else {
+            await tx.sKUCostHistory.create({
+              data: { skuId: sku.id, stock: qty, avgCost: unitPrice },
+            });
+          }
         }
         count++;
       }

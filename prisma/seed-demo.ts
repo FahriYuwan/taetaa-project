@@ -44,60 +44,64 @@ async function main() {
   // - PLWR (Plastik wrap) = Rp 148,15 / pcs
   // - FOM3 (Botol Foam 100ml) = Rp 4.882,74 / pcs
   // =========================================================================
+  // 1. MASTER ITEM KEMASAN (Stok & HPP awal = 0 sebelum transaksi pembelian)
+  // Sesuai prinsip akuntansi: Master Kemasan adalah katalog kemasan,
+  // nilainya dinamis terbentuk dari nota pembelian via Weighted Average.
+  // =========================================================================
   console.log('--- 1. SEEDING MASTER ITEM KEMASAN ---');
   const btl1 = await prisma.masterItemKemasan.create({
-    data: { code: 'BTL1', name: 'Botol 1 Liter', category: BOMCategory.PACKING, stock: 80, avgCost: 4147.69 }
+    data: { code: 'BTL1', name: 'Botol 1 Liter', category: BOMCategory.PACKING, stock: 0, avgCost: 0 }
   });
   const btl2 = await prisma.masterItemKemasan.create({
-    data: { code: 'BTL2', name: 'Botol 500 ML', category: BOMCategory.PACKING, stock: 150, avgCost: 1200 }
+    data: { code: 'BTL2', name: 'Botol 500 ML', category: BOMCategory.PACKING, stock: 0, avgCost: 0 }
   });
   const btl100 = await prisma.masterItemKemasan.create({
-    data: { code: 'BTL100', name: 'Botol 100 ML', category: BOMCategory.PACKING, stock: 100, avgCost: 800 }
+    data: { code: 'BTL100', name: 'Botol 100 ML', category: BOMCategory.PACKING, stock: 0, avgCost: 0 }
   });
   const fom3 = await prisma.masterItemKemasan.create({
-    data: { code: 'FOM3', name: 'Botol Foam 100 ML', category: BOMCategory.PACKING, stock: 50, avgCost: 4882.74 }
+    data: { code: 'FOM3', name: 'Botol Foam 100 ML', category: BOMCategory.PACKING, stock: 0, avgCost: 0 }
   });
   const krc3 = await prisma.masterItemKemasan.create({
-    data: { code: 'KRC3', name: 'Botol Kerucut 100 ML', category: BOMCategory.PACKING, stock: 50, avgCost: 2555.22 }
+    data: { code: 'KRC3', name: 'Botol Kerucut 100 ML', category: BOMCategory.PACKING, stock: 0, avgCost: 0 }
   });
   const spr3 = await prisma.masterItemKemasan.create({
-    data: { code: 'SPR3', name: 'Botol Spray 100 ML', category: BOMCategory.PACKING, stock: 36, avgCost: 1770.36 }
+    data: { code: 'SPR3', name: 'Botol Spray 100 ML', category: BOMCategory.PACKING, stock: 0, avgCost: 0 }
   });
   const tspr = await prisma.masterItemKemasan.create({
-    data: { code: 'TSPR', name: 'Tutup Spray', category: BOMCategory.PACKING, stock: 200, avgCost: 450.84 }
+    data: { code: 'TSPR', name: 'Tutup Spray', category: BOMCategory.PACKING, stock: 0, avgCost: 0 }
   });
 
   const stk1 = await prisma.masterItemKemasan.create({
-    data: { code: 'STK1', name: 'Stiker Bubblegum 1L', category: BOMCategory.STIKER, stock: 1000, avgCost: 500 }
+    data: { code: 'STK1', name: 'Stiker Bubblegum 1L', category: BOMCategory.STIKER, stock: 0, avgCost: 0 }
   });
   const stk2 = await prisma.masterItemKemasan.create({
-    data: { code: 'STK2', name: 'Stiker Kopi 500ML', category: BOMCategory.STIKER, stock: 1000, avgCost: 400 }
+    data: { code: 'STK2', name: 'Stiker Kopi 500ML', category: BOMCategory.STIKER, stock: 0, avgCost: 0 }
   });
   const stk3 = await prisma.masterItemKemasan.create({
-    data: { code: 'STK3', name: 'Stiker Vanila 100ML', category: BOMCategory.STIKER, stock: 1000, avgCost: 300 }
+    data: { code: 'STK3', name: 'Stiker Vanila 100ML', category: BOMCategory.STIKER, stock: 0, avgCost: 0 }
   });
 
   const sltp = await prisma.masterItemKemasan.create({
-    data: { code: 'SLTP', name: 'Sealtape / Segel Tutup', category: BOMCategory.SAFETY, stock: 210, avgCost: 146.03 }
+    data: { code: 'SLTP', name: 'Sealtape / Segel Tutup', category: BOMCategory.SAFETY, stock: 0, avgCost: 0 }
   });
   const plwr = await prisma.masterItemKemasan.create({
-    data: { code: 'PLWR', name: 'Plastik Wrap Makanan', category: BOMCategory.SAFETY, stock: 200, avgCost: 148.15 }
+    data: { code: 'PLWR', name: 'Plastik Wrap Makanan', category: BOMCategory.SAFETY, stock: 0, avgCost: 0 }
   });
   const tbtl = await prisma.masterItemKemasan.create({
-    data: { code: 'TBTL', name: 'Tutup Botol Standar', category: BOMCategory.SAFETY, stock: 1000, avgCost: 200 }
+    data: { code: 'TBTL', name: 'Tutup Botol Standar', category: BOMCategory.SAFETY, stock: 0, avgCost: 0 }
   });
 
   const dus1 = await prisma.masterItemKemasan.create({
-    data: { code: 'DUS1', name: 'Dus Ukuran 5 X 5 X 15', category: BOMCategory.DUS, stock: 200, avgCost: 400 }
+    data: { code: 'DUS1', name: 'Dus Ukuran 5 X 5 X 15', category: BOMCategory.DUS, stock: 0, avgCost: 0 }
   });
   const dus2 = await prisma.masterItemKemasan.create({
-    data: { code: 'DUS2', name: 'Dus Ukuran 6 X 6 X 17', category: BOMCategory.DUS, stock: 200, avgCost: 425.38 }
+    data: { code: 'DUS2', name: 'Dus Ukuran 6 X 6 X 17', category: BOMCategory.DUS, stock: 0, avgCost: 0 }
   });
   const dus3 = await prisma.masterItemKemasan.create({
-    data: { code: 'DUS3', name: 'Dus Ukuran 20 X 10 X 5', category: BOMCategory.DUS, stock: 100, avgCost: 673.52 }
+    data: { code: 'DUS3', name: 'Dus Ukuran 20 X 10 X 5', category: BOMCategory.DUS, stock: 0, avgCost: 0 }
   });
   const dus7 = await prisma.masterItemKemasan.create({
-    data: { code: 'DUS7', name: 'Dus Ukuran 25 X 20 X 10', category: BOMCategory.DUS, stock: 20, avgCost: 2325 }
+    data: { code: 'DUS7', name: 'Dus Ukuran 25 X 20 X 10', category: BOMCategory.DUS, stock: 0, avgCost: 0 }
   });
 
   // =========================================================================
@@ -253,7 +257,8 @@ async function main() {
   // - PBG/PCF/PVL: Rp 200.000 - Rp 250.000 / jerigen
   // - ESD (Eraser Suede): Rp 2.500 / pcs
   // =========================================================================
-  console.log('--- 4. SEEDING PURCHASES (Membentuk HPP / avgCost Bahan Baku) ---');
+  console.log('--- 4. SEEDING PURCHASES (Membentuk HPP / avgCost Bahan Baku & Kemasan) ---');
+  // A. Pembelian Bahan Mentah (RAW)
   const rawPurchases = [
     { date: '2026-08-01', skuId: sbnRaw.id, qty: 500, unitPrice: 5000, supplier: 'Toko Kimia Sentosa' },
     { date: '2026-08-01', skuId: pbgRaw.id, qty: 50, unitPrice: 200000, supplier: 'Essence World' },
@@ -274,6 +279,49 @@ async function main() {
     // avgCost RAW terbentuk secara dinamis dari harga beli riil
     await prisma.sKUCostHistory.create({
       data: { skuId: p.skuId, stock: p.qty, avgCost: p.unitPrice }
+    });
+  }
+
+  // B. Pembelian Item Kemasan (0. PACKAGING) dari sheet RECENT PURCHASE
+  const kemasanPurchases = [
+    { kemasanId: btl1.id, qty: 80, unitPrice: 4147.69, supplier: 'Pabrik Botol Plastik Jaya' },
+    { kemasanId: btl2.id, qty: 150, unitPrice: 1200, supplier: 'Pabrik Botol Plastik Jaya' },
+    { kemasanId: btl100.id, qty: 100, unitPrice: 800, supplier: 'Pabrik Botol Plastik Jaya' },
+    { kemasanId: fom3.id, qty: 50, unitPrice: 4882.74, supplier: 'Pabrik Botol Plastik Jaya' },
+    { kemasanId: krc3.id, qty: 50, unitPrice: 2555.22, supplier: 'Pabrik Botol Plastik Jaya' },
+    { kemasanId: spr3.id, qty: 36, unitPrice: 1770.36, supplier: 'Pabrik Botol Plastik Jaya' },
+    { kemasanId: tspr.id, qty: 200, unitPrice: 450.84, supplier: 'Pabrik Tutup Botol' },
+    { kemasanId: stk1.id, qty: 1000, unitPrice: 500, supplier: 'Percetakan Stiker Mandiri' },
+    { kemasanId: stk2.id, qty: 1000, unitPrice: 400, supplier: 'Percetakan Stiker Mandiri' },
+    { kemasanId: stk3.id, qty: 1000, unitPrice: 300, supplier: 'Percetakan Stiker Mandiri' },
+    { kemasanId: sltp.id, qty: 210, unitPrice: 146.03, supplier: 'Distributor Lakban Nusantara' },
+    { kemasanId: plwr.id, qty: 200, unitPrice: 148.15, supplier: 'Distributor Plastik Wrap' },
+    { kemasanId: tbtl.id, qty: 1000, unitPrice: 200, supplier: 'Pabrik Tutup Botol' },
+    { kemasanId: dus1.id, qty: 200, unitPrice: 400, supplier: 'Vendor Karton Box Cemerlang' },
+    { kemasanId: dus2.id, qty: 200, unitPrice: 425.38, supplier: 'Vendor Karton Box Cemerlang' },
+    { kemasanId: dus3.id, qty: 100, unitPrice: 673.52, supplier: 'Vendor Karton Box Cemerlang' },
+    { kemasanId: dus7.id, qty: 20, unitPrice: 2325, supplier: 'Vendor Karton Box Cemerlang' }
+  ];
+
+  for (const kp of kemasanPurchases) {
+    await prisma.purchase.create({
+      data: {
+        date: new Date('2026-08-01'),
+        kemasanId: kp.kemasanId,
+        qty: kp.qty,
+        unitPrice: kp.unitPrice,
+        total: kp.qty * kp.unitPrice,
+        supplier: kp.supplier,
+        notes: 'Pasokan awal kemasan batch Agustus'
+      }
+    });
+    // HPP Kemasan terbentuk dinamis dari harga beli riil
+    await prisma.masterItemKemasan.update({
+      where: { id: kp.kemasanId },
+      data: {
+        stock: kp.qty,
+        avgCost: kp.unitPrice
+      }
     });
   }
 

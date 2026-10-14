@@ -64,7 +64,7 @@ export function Sidebar() {
     { section: 'Katalog & Operasional' },
     { label: 'Master SKU', icon: <FiTag size={16} />, href: '/master-sku' },
     { label: 'Master Kemasan', icon: <FiBox size={16} />, href: '/master-kemasan' },
-    { label: 'Pembelian Bahan Baku', icon: <FiShoppingCart size={16} />, href: '/pembelian-raw' },
+    { label: 'Pembelian Bahan & Kemasan', icon: <FiShoppingCart size={16} />, href: '/pembelian-raw' },
     { label: 'Produksi', icon: <FiLayers size={16} />, href: '/produksi' },
     { section: 'Aktivitas Bisnis' },
     {

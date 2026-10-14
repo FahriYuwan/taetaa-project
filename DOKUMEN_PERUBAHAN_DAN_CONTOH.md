@@ -481,7 +481,33 @@ File [prisma/seed-demo.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/p
 | **Data Retur** | [sales/[id]/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/sales/[id]/route.ts), [schema.prisma](file:///d:/File%20Fahri/Semester%208/taetaa-project/prisma/schema.prisma) | Tabel `Return` tidak terhubung ke `Sale`. | Dihubungkan via foreign key dan otomatis mencatat riwayat saat order diubah ke `DIRETURN`. |
 | **Validasi API** | `lib/validations/`, route handlers | Input negatif atau tipe salah lolos ke database. | Proteksi skema otomatis menggunakan pustaka **Zod**. |
 | **Scanner Modal** | [ScannerModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/ScannerModal.tsx), [useScannerFlow.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/hooks/useScannerFlow.ts) | File monolitik >780 baris mencampur UI dan logika. | Logika dipisah ke custom hook `useScannerFlow`. |
-| **Pengujian** | `tests/*.test.ts`, [package.json](file:///d:/File%20Fahri/Semester%208/taetaa-project/package.json) | 0 automated test; rentan regresi saat diubah. | Test suite otomatis via `npm test` (18/18 tes lolos). |
+| **Pengujian** | `tests/*.test.ts`, [package.json](file:///d:/File%20Fahri/Semester%208/taetaa-project/package.json) | 0 automated test; rentan regresi saat diubah. | Test suite otomatis via `npm test` (20/20 tes lolos). |
+| **Pembelian Kemasan Dinamis** | [schema.prisma](file:///d:/File%20Fahri/Semester%208/taetaa-project/prisma/schema.prisma), [purchases/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/purchases/route.ts), [AddPurchaseModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddPurchaseModal.tsx), [seed-demo.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/prisma/seed-demo.ts) | Kemasan hanya diinput manual di Master Kemasan; jika harga vendor berubah, stok lama tertimpa dan tidak ada riwayat belanja. | Relasi `Purchase.kemasanId` + auto-weighted-average saat catat pembelian kemasan + seeder riil sheet RECENT PURCHASE. |
+
+---
+
+## 14. Perubahan 14: Integrasi Pembelian Kemasan Dinamis (Auto-Weighted Average) & Penyelarasan Seeder
+
+### 📌 Masalah Sebelumnya
+1. **Ketidakkonsistenan Istilah**: Halaman Master Kemasan sebelumnya menampilkan header tabel `AVG COST` (istilah kolom teknis DB) sementara Master SKU menggunakan `HARGA HPP`.
+2. **Kerapuhan Input Manual**: Di sistem web awal, item kemasan (Botol, Tutup, Stiker, Dus, Lakban) hanya dapat diinput HPP dan stoknya secara manual di halaman Master Kemasan. Jika harga vendor naik, staf harus menimpa angka tersebut sehingga stok lama ikut terkatrol (bukan rata-rata tertimbang), dan tidak ada rekaman nota pembelian.
+3. **Seeder Tidak Memiliki Transaksi Kemasan**: Di [seed-demo.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/prisma/seed-demo.ts), stok dan HPP kemasan langsung di-hardcode saat pendaftaran master (`stock: 80, avgCost: 4147.69`), padahal di file Excel referensi `Copy of Copy of AGUSTUS 2026.xlsx` kemasan tercatat riil di sheet `RECENT PURCHASE`.
+
+### 💡 Solusi Baru
+1. **Standarisasi Istilah HPP**:
+   - Kolom tabel [Master Kemasan](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/master-kemasan/page.tsx) diubah menjadi **`HARGA HPP`** selaras dengan Master SKU.
+   - Input modal disesuaikan menjadi **`Harga HPP Satuan`**.
+2. **Integrasi Pembelian Kemasan di Schema & API**:
+   - `model Purchase` di [prisma/schema.prisma](file:///d:/File%20Fahri/Semester%208/taetaa-project/prisma/schema.prisma) kini memiliki relasi opsional `kemasanId` ke `MasterItemKemasan`.
+   - API [app/api/purchases/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/purchases/route.ts) otomatis memperbarui stok dan menghitung ulang HPP kemasan menggunakan rumus *True Weighted Average*:
+     $$\text{HPP Baru} = \frac{(\text{Stok Lama} \times \text{HPP Lama}) + (\text{Qty Beli} \times \text{Harga Satuan Nota})}{\text{Stok Lama} + \text{Qty Beli}}$$
+3. **UI Modul Pembelian Bahan & Kemasan**:
+   - [AddPurchaseModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddPurchaseModal.tsx) menyediakan tombol toggle kategori: **Bahan Baku (RAW)** vs **Kemasan (Botol, Stiker, Dus, Safety)** dengan live preview estimasi HPP baru.
+   - Halaman [app/pembelian-raw/page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/pembelian-raw/page.tsx) diubah judulnya menjadi **Pembelian Bahan & Kemasan**, dilengkapi ringkasan KPI dan filter tab (*Semua*, *RAW*, *Kemasan*).
+4. **Penyelarasan Seeder Database (`prisma/seed-demo.ts`)**:
+   - **Step 1**: Inisialisasi `MasterItemKemasan` dengan stok 0 dan avgCost 0.
+   - **Step 4**: Menambahkan transaksi riil pembelian kemasan dari sheet `RECENT PURCHASE` (`BTL1`, `BTL2`, `FOM3`, `DUS2`, `DUS3`, `SLTP`, `PLWR`, `STK1`, dll.) ke dalam tabel `Purchase`.
+   - **Step 5**: Produksi menyerap stok dan HPP kemasan hasil pembelian tersebut secara terpadu.
 
 ---
 

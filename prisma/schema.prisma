@@ -88,12 +88,14 @@ model MasterItemKemasan {
   
   bomUsedIn        BOMComponent[]
   productionInputs ProductionKemasanInput[]
+  purchases        Purchase[]
 }
 
 model Purchase {
   id        String   @id @default(cuid())
   date      DateTime
-  skuId     String
+  skuId     String?
+  kemasanId String?
   qty       Float
   unitPrice Float
   total     Float    @default(0)
@@ -102,10 +104,12 @@ model Purchase {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  sku SKU @relation(fields: [skuId], references: [id], onDelete: Cascade)
+  sku     SKU?               @relation(fields: [skuId], references: [id], onDelete: Cascade)
+  kemasan MasterItemKemasan? @relation(fields: [kemasanId], references: [id], onDelete: Cascade)
 
   @@index([date])
   @@index([skuId])
+  @@index([kemasanId])
 }
 
 model Inventory {

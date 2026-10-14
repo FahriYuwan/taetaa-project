@@ -16,7 +16,17 @@ export async function GET(request: Request) {
     to.setHours(23, 59, 59, 999);
 
     // Fetch data in parallel for performance
-    const [sales, purchases, allSkus, costHistories, expenses, breakages] = await Promise.all([
+    const [
+      sales,
+      purchases,
+      allSkus,
+      costHistories,
+      expenses,
+      breakages,
+      firstSale,
+      lastSale,
+      totalAvailableSales,
+    ] = await Promise.all([
       prisma.sale.findMany({
         where: {
           date: {
@@ -63,6 +73,9 @@ export async function GET(request: Request) {
           },
         },
       }),
+      prisma.sale.findFirst({ orderBy: { date: 'asc' }, select: { date: true } }),
+      prisma.sale.findFirst({ orderBy: { date: 'desc' }, select: { date: true } }),
+      prisma.sale.count(),
     ]);
 
     const costMap = new Map(costHistories.map((ch) => [ch.skuId, ch.avgCost]));
@@ -77,7 +90,19 @@ export async function GET(request: Request) {
     const uniqueOrders = new Set<string>();
 
     const dateMap = new Map<string, { date: string; revenue: number; hpp: number; profit: number }>();
-    const marketplaceMap = new Map<string, number>();
+    const marketplaceMap = new Map<
+      string,
+      {
+        name: string;
+        revenue: number;
+        gross: number;
+        fee: number;
+        hpp: number;
+        profit: number;
+        orders: number;
+        qty: number;
+      }
+    >();
     const skuProfitMap = new Map<string, { skuCode: string; quantity: number; revenue: number; profit: number }>();
 
     sales.forEach((sale) => {
@@ -113,7 +138,7 @@ export async function GET(request: Request) {
         return;
       }
 
-      // Order TERKIRIM
+      // Order TERKIRIM / DITERIMA / SELISIH_QTY
       const gross = sale.total || (sale.qty * (sale.unitPrice || 0));
       const saleNetRevenue =
         sale.omset > 0
@@ -152,7 +177,26 @@ export async function GET(request: Request) {
 
       // Marketplace breakdown
       const channel = sale.channel || 'OFFLINE';
-      marketplaceMap.set(channel, (marketplaceMap.get(channel) || 0) + saleNetRevenue);
+      if (!marketplaceMap.has(channel)) {
+        marketplaceMap.set(channel, {
+          name: channel,
+          revenue: 0,
+          gross: 0,
+          fee: 0,
+          hpp: 0,
+          profit: 0,
+          orders: 0,
+          qty: 0,
+        });
+      }
+      const mEntry = marketplaceMap.get(channel)!;
+      mEntry.revenue += saleNetRevenue;
+      mEntry.gross += gross;
+      mEntry.fee += fee;
+      mEntry.hpp += saleHpp;
+      mEntry.profit += saleProfit;
+      mEntry.orders += 1;
+      mEntry.qty += sale.qty;
 
       // Top 10 SKUs by profit
       const skuCode = sale.sku?.code || 'Unknown';
@@ -174,11 +218,16 @@ export async function GET(request: Request) {
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
 
-    const marketplaceData = Array.from(marketplaceMap.entries()).map(
-      ([name, revenue]) => ({ name, revenue })
-    );
+    const marketplaceData = Array.from(marketplaceMap.values()).map((m) => ({
+      ...m,
+      profitMargin: m.revenue > 0 ? Math.round((m.profit / m.revenue) * 100) : 0,
+    }));
 
     const top10SKUs = Array.from(skuProfitMap.values())
+      .map((item) => ({
+        ...item,
+        margin: item.revenue > 0 ? Math.round((item.profit / item.revenue) * 100) : 0,
+      }))
       .sort((a, b) => b.profit - a.profit)
       .slice(0, 10);
 
@@ -238,6 +287,27 @@ export async function GET(request: Request) {
       },
     ];
 
+    const availableDateRange = {
+      minDate: firstSale ? firstSale.date.toISOString().split('T')[0] : null,
+      maxDate: lastSale ? lastSale.date.toISOString().split('T')[0] : null,
+      totalSales: totalAvailableSales,
+    };
+
+    const costBreakdown = {
+      grossRevenue: totalGross,
+      platformFee: totalFee,
+      netRevenue,
+      cogs: totalHPP,
+      operatingExpenses: totalExpenses,
+      breakageLoss: totalBreakage,
+      returnLoss,
+      totalOtherLosses,
+      grossProfit,
+      netProfit,
+      grossMargin: netRevenue > 0 ? Math.round((grossProfit / netRevenue) * 100) : 0,
+      netMargin: profitMargin,
+    };
+
     return Response.json({
       kpi: {
         totalGross,
@@ -263,6 +333,8 @@ export async function GET(request: Request) {
       marketplaceData,
       top10SKUs,
       inventoryDonutData,
+      availableDateRange,
+      costBreakdown,
     });
   } catch (error) {
     console.error('Dashboard error:', error);

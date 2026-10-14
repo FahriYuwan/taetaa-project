@@ -24,12 +24,16 @@ export async function GET(req: Request) {
 
     const purchases = await prisma.purchase.findMany({
       where,
-      include: { sku: true },
+      include: { 
+        sku: true,
+        kemasan: true,
+      },
       orderBy: { date: 'desc' },
     });
     return NextResponse.json(purchases);
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to fetch purchases' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Error in GET /api/purchases:', error);
+    return NextResponse.json({ error: 'Failed to fetch purchases', details: error?.message || String(error) }, { status: 500 });
   }
 }
 
@@ -41,7 +45,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: validation.error, details: validation.issues }, { status: 400 });
     }
 
-    const { date, skuId, qty, unitPrice, supplier, notes } = validation.data;
+    const { date, skuId, kemasanId, qty, unitPrice, supplier, notes } = validation.data;
 
     const total = qty * unitPrice;
 
@@ -50,57 +54,84 @@ export async function POST(req: Request) {
       const purchase = await tx.purchase.create({
         data: {
           date: new Date(date),
-          skuId,
+          skuId: skuId || null,
+          kemasanId: kemasanId || null,
           qty,
           unitPrice,
           total,
           supplier,
           notes,
         },
-      });
-
-      // 2. Add to Inventory Movement
-      await tx.inventory.create({
-        data: {
-          date: new Date(date),
-          skuId,
-          movement: qty,
-          type: MovementType.PURCHASE,
-          reference: purchase.id,
+        include: {
+          sku: true,
+          kemasan: true,
         },
       });
 
-      // 3. Update SKUCostHistory (Weighted Average HPP)
-      // AVG COST baru = (Stok lama × AVG COST lama + Qty baru × Harga Satuan baru) / (Stok lama + Qty baru)
-      const costHistory = await tx.sKUCostHistory.findUnique({
-        where: { skuId },
-      });
-
-      if (costHistory) {
-        const oldStock = costHistory.stock;
-        const oldAvgCost = costHistory.avgCost;
-        const newStock = oldStock + qty;
-
-        // Handle case where stock might be 0 or negative
-        const currentStockForAvg = Math.max(0, oldStock);
-        const newAvgCost = ((currentStockForAvg * oldAvgCost) + (qty * unitPrice)) / (currentStockForAvg + qty);
-
-        await tx.sKUCostHistory.update({
-          where: { skuId },
-          data: {
-            stock: newStock,
-            avgCost: newAvgCost,
-          },
+      if (kemasanId) {
+        // 2. Handle Kemasan: update stock and recalculate Weighted Average HPP (avgCost)
+        const kemasan = await tx.masterItemKemasan.findUnique({
+          where: { id: kemasanId },
         });
-      } else {
-        // First time purchase for this SKU
-        await tx.sKUCostHistory.create({
+
+        if (kemasan) {
+          const oldStock = Math.max(0, kemasan.stock);
+          const oldAvgCost = kemasan.avgCost || 0;
+          const newStock = kemasan.stock + qty;
+          const newAvgCost = ((oldStock * oldAvgCost) + (qty * unitPrice)) / (oldStock + qty);
+
+          await tx.masterItemKemasan.update({
+            where: { id: kemasanId },
+            data: {
+              stock: newStock,
+              avgCost: newAvgCost,
+            },
+          });
+        }
+      } else if (skuId) {
+        // 2. Add to Inventory Movement for SKU
+        await tx.inventory.create({
           data: {
+            date: new Date(date),
             skuId,
-            stock: qty,
-            avgCost: unitPrice,
+            movement: qty,
+            type: MovementType.PURCHASE,
+            reference: purchase.id,
           },
         });
+
+        // 3. Update SKUCostHistory (Weighted Average HPP)
+        // AVG COST baru = (Stok lama × AVG COST lama + Qty baru × Harga Satuan baru) / (Stok lama + Qty baru)
+        const costHistory = await tx.sKUCostHistory.findUnique({
+          where: { skuId },
+        });
+
+        if (costHistory) {
+          const oldStock = costHistory.stock;
+          const oldAvgCost = costHistory.avgCost;
+          const newStock = oldStock + qty;
+
+          // Handle case where stock might be 0 or negative
+          const currentStockForAvg = Math.max(0, oldStock);
+          const newAvgCost = ((currentStockForAvg * oldAvgCost) + (qty * unitPrice)) / (currentStockForAvg + qty);
+
+          await tx.sKUCostHistory.update({
+            where: { skuId },
+            data: {
+              stock: newStock,
+              avgCost: newAvgCost,
+            },
+          });
+        } else {
+          // First time purchase for this SKU
+          await tx.sKUCostHistory.create({
+            data: {
+              skuId,
+              stock: qty,
+              avgCost: unitPrice,
+            },
+          });
+        }
       }
 
       return purchase;

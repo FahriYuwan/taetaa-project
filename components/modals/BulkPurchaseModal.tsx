@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { colors } from '@/lib/theme';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/lib/toast';
@@ -15,6 +15,17 @@ export function BulkPurchaseModal({ isOpen, onClose, onSuccess }: BulkPurchaseMo
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !loading) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, loading, onClose]);
 
   if (!isOpen) return null;
 
@@ -52,7 +63,7 @@ export function BulkPurchaseModal({ isOpen, onClose, onSuccess }: BulkPurchaseMo
 
         <div className="bg-blue-50 p-3 rounded text-xs text-blue-700 mb-4 border border-blue-100">
           <p className="font-bold mb-1">Format Kolom (Tab-Separated):</p>
-          <code>TANGGAL (YYYY-MM-DD) [TAB] KODE_SKU [TAB] QTY [TAB] HARGA_SATUAN [TAB] SUPPLIER [TAB] CATATAN</code>
+          <code>TANGGAL (YYYY-MM-DD) [TAB] KODE_SKU_ATAU_KEMASAN [TAB] QTY [TAB] HARGA_SATUAN [TAB] SUPPLIER [TAB] CATATAN</code>
         </div>
 
         <textarea

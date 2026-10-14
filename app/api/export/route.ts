@@ -40,12 +40,15 @@ export async function GET(req: Request) {
       case 'purchases': {
         const purchases = await prisma.purchase.findMany({
           where: { date: { gte: from, lte: to } },
-          include: { sku: true },
+          include: { sku: true, kemasan: true },
           orderBy: { date: 'asc' }
         });
-        csvContent = "Tanggal,SKU,Nama,Qty,Harga Satuan,Total,Supplier,Catatan\n";
+        csvContent = "Tanggal,Tipe,Kode,Nama,Qty,Harga Satuan,Total,Supplier,Catatan\n";
         purchases.forEach(p => {
-          csvContent += `${p.date.toISOString().split('T')[0]},${p.sku.code},${p.sku.name},${p.qty},${p.unitPrice},${p.total},${p.supplier || ""},${p.notes || ""}\n`;
+          const type = p.kemasanId ? `KEMASAN (${p.kemasan?.category || ''})` : 'RAW';
+          const code = p.kemasan?.code || p.sku?.code || '';
+          const name = (p.kemasan?.name || p.sku?.name || '').replace(/"/g, '""');
+          csvContent += `${p.date.toISOString().split('T')[0]},${type},${code},"${name}",${p.qty},${p.unitPrice},${p.total},${p.supplier || ""},${p.notes || ""}\n`;
         });
         break;
       }
