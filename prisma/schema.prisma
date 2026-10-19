@@ -19,7 +19,8 @@ model SKU {
   code         String   @unique
   name         String
   type         SKUType
-  productSize  Float?   @default(0) // in ml
+  productSize  Float?   @default(0) // volume or quantity count
+  unit         String?  @default("ml") // ml, pcs
   hppPrice     Float?   @default(0)
   sellingPrice Float? // for PACKAGE only
   stockMin     Float?   @default(0)
@@ -83,6 +84,9 @@ model MasterItemKemasan {
   category    BOMCategory
   stock       Float       @default(0)
   avgCost     Float       @default(0)
+  stockMin    Float?      @default(0)
+  isPeriodic  Boolean?    @default(false)
+  lastOpname  DateTime?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   

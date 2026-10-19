@@ -13,14 +13,16 @@ import {
   FiTrendingDown,
   FiAlertCircle,
   FiDatabase,
-  FiInfo
+  FiInfo,
+  FiClock
 } from 'react-icons/fi';
+import { PeriodicKemasanOpnameModal } from '@/components/modals/PeriodicKemasanOpnameModal';
 
 interface InventoryItem {
   id: string;
   code: string;
   name: string;
-  type: 'RAW' | 'PRODUCT' | 'PACKAGE';
+  type: 'RAW' | 'PRODUCT' | 'PACKAGE' | 'KEMASAN';
   stockAwal: number;
   masukBeli: number;
   masukProduksi: number;
@@ -45,6 +47,7 @@ interface InventoryData {
     raw: { value: number, count: number };
     product: { value: number, count: number };
     package: { value: number, count: number };
+    kemasan?: { value: number, count: number };
   };
   items: InventoryItem[];
 }
@@ -54,8 +57,9 @@ export default function InventoryDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<InventoryData | null>(null);
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'RAW' | 'PRODUCT' | 'PACKAGE' | 'RESTOCK'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'RAW' | 'PRODUCT' | 'PACKAGE' | 'KEMASAN' | 'RESTOCK'>('all');
   const [viewingBreakdown, setViewingBreakdown] = useState<InventoryItem | null>(null);
+  const [showOpnameModal, setShowOpnameModal] = useState(false);
 
   // Date filters
   const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -142,7 +146,7 @@ export default function InventoryDashboardPage() {
               <label className="text-[10px] font-bold text-gray-400 uppercase">Pencarian</label>
               <input
                 type="text"
-                placeholder="Cari SKU..."
+                placeholder="Cari SKU / Item..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="block px-3 py-1.5 border rounded text-xs bg-white w-40"
@@ -155,26 +159,30 @@ export default function InventoryDashboardPage() {
       <div className="flex-1 overflow-auto p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Row 1: Financial KPI (Main) */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
-          <div className="col-span-2">
-            <KPICard
-              label="TOTAL HARGA SEMUA BARANG"
-              value={`Rp ${(data?.kpi.totalValue || 0).toLocaleString('id-ID')}`}
-              description="Total akumulasi nilai stock akhir dari seluruh kategori SKU (Raw, Product, Package)."
-              valueColor={colors.brand[500]}
-              icon={<FiDatabase size={24} />}
-            />
-          </div>
           <KPICard
-            label="TOTAL HARGA BARANG [RAW]"
+            label="TOTAL SEMUA BARANG"
+            value={`Rp ${(data?.kpi.totalValue || 0).toLocaleString('id-ID')}`}
+            description="Nilai stock akhir Raw, Product, Package, dan Kemasan."
+            valueColor={colors.brand[500]}
+            icon={<FiDatabase size={22} />}
+          />
+          <KPICard
+            label="TOTAL [RAW]"
             value={`Rp ${(data?.kpi.raw.value || 0).toLocaleString('id-ID')}`}
             description={`${data?.kpi.raw.count || 0} SKU Bahan Baku`}
             icon={<FiPackage size={20} />}
           />
           <KPICard
-            label="TOTAL HARGA BARANG [PRODUCT & PACKAGE]"
+            label="TOTAL [PRODUCT & PACKAGE]"
             value={`Rp ${((data?.kpi.product.value || 0) + (data?.kpi.package.value || 0)).toLocaleString('id-ID')}`}
             description={`${(data?.kpi.product.count || 0) + (data?.kpi.package.count || 0)} SKU Barang Jadi/Kemas`}
             icon={<FiActivity size={20} />}
+          />
+          <KPICard
+            label="TOTAL [KEMASAN]"
+            value={`Rp ${(data?.kpi.kemasan?.value || 0).toLocaleString('id-ID')}`}
+            description={`${data?.kpi.kemasan?.count || 0} Item Kemasan & Botol`}
+            icon={<FiPackage size={20} />}
           />
         </div>
 
@@ -262,6 +270,7 @@ export default function InventoryDashboardPage() {
               { id: 'RAW', label: 'RAW' },
               { id: 'PRODUCT', label: 'Product' },
               { id: 'PACKAGE', label: 'PACKAGE' },
+              { id: 'KEMASAN', label: 'Kemasan' },
               { id: 'RESTOCK', label: '⚠️ Perlu Restock' }
             ].map((tab) => (
               <button
@@ -276,6 +285,23 @@ export default function InventoryDashboardPage() {
               </button>
             ))}
           </div>
+
+          {typeFilter === 'KEMASAN' && (
+            <div className="px-6 py-3 bg-blue-50/70 border-b flex items-center justify-between text-xs text-blue-900" style={{ borderColor: colors.neutral.border }}>
+              <div className="flex items-center gap-2">
+                <FiClock className="text-blue-600 shrink-0" size={15} />
+                <span>
+                  Botol & dus utama dipantau harian. Item habis pakai (sealtape, wrap, stiker) diperiksa berkala melalui Opname Mingguan.
+                </span>
+              </div>
+              <button
+                onClick={() => setShowOpnameModal(true)}
+                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium cursor-pointer transition-colors"
+              >
+                Form Opname Mingguan
+              </button>
+            </div>
+          )}
 
           {/* Table */}
           <div className="overflow-x-auto">
@@ -346,7 +372,7 @@ export default function InventoryDashboardPage() {
                                 <div
                                   className="inline-flex items-center gap-1 cursor-help"
                                   style={{ color: colors.semantic.red }}
-                                  title={`Stok saat ini: ${item.stockAkhir} — Stok Minimum: ${stockMin} — Kurang: ${kurang} unit`}
+                                  title={`Stok saat ini: ${item.stockAkhir} | Stok Minimum: ${stockMin} | Kurang: ${kurang} unit`}
                                 >
                                   <span>⚠️</span>
                                   <span>{item.stockAkhir.toLocaleString('id-ID')}</span>
@@ -379,6 +405,12 @@ export default function InventoryDashboardPage() {
           onClose={() => setViewingBreakdown(null)}
         />
       )}
+
+      <PeriodicKemasanOpnameModal
+        isOpen={showOpnameModal}
+        onClose={() => setShowOpnameModal(false)}
+        onSuccess={() => fetchInventory()}
+      />
     </div>
   );
 }

@@ -8,7 +8,8 @@ import { NumberInput } from '@/components/ui/NumberInput';
 import { ConfirmDialog } from '@/components/modals/ConfirmDialog';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
-import { FiShoppingCart, FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiShoppingCart, FiPlus, FiEdit2, FiTrash2, FiClock, FiAlertCircle } from 'react-icons/fi';
+import { PeriodicKemasanOpnameModal } from '@/components/modals/PeriodicKemasanOpnameModal';
 
 interface KemasanItem {
   id: string;
@@ -16,7 +17,10 @@ interface KemasanItem {
   name: string;
   category: 'PACKING' | 'STIKER' | 'SAFETY' | 'DUS';
   stock: number;
+  stockMin?: number | null;
   avgCost: number;
+  isPeriodic?: boolean | null;
+  lastOpname?: string | null;
 }
 
 export default function MasterKemasanPage() {
@@ -25,6 +29,8 @@ export default function MasterKemasanPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showOpnameModal, setShowOpnameModal] = useState(false);
+  const [periodicAlertCount, setPeriodicAlertCount] = useState(0);
   const [editingItem, setEditingItem] = useState<KemasanItem | null>(null);
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,7 +38,20 @@ export default function MasterKemasanPage() {
 
   useEffect(() => {
     fetchItems();
+    fetchPeriodicSummary();
   }, [filter]);
+
+  async function fetchPeriodicSummary() {
+    try {
+      const res = await fetch('/api/kemasan/opname-periodik');
+      if (res.ok) {
+        const data = await res.json();
+        setPeriodicAlertCount(data.needsOpnameCount || 0);
+      }
+    } catch {
+      // non-blocking
+    }
+  }
 
   async function fetchItems() {
     try {
@@ -110,6 +129,14 @@ export default function MasterKemasanPage() {
               className="px-4 py-2 rounded border text-sm"
               style={{ borderColor: colors.neutral.border }}
             />
+            <Button 
+              variant="secondary" 
+              icon={<FiClock size={15} />} 
+              onClick={() => setShowOpnameModal(true)}
+              className={periodicAlertCount > 0 ? 'border-amber-400 bg-amber-50 text-amber-800' : ''}
+            >
+              {periodicAlertCount > 0 ? `Opname Mingguan (${periodicAlertCount})` : 'Opname Mingguan'}
+            </Button>
             <Link href="/pembelian-raw">
               <Button variant="secondary" icon={<FiShoppingCart size={15} />}>
                 Beli Kemasan
@@ -123,6 +150,23 @@ export default function MasterKemasanPage() {
       />
 
       <div className="flex-1 overflow-auto p-6">
+        {periodicAlertCount > 0 && (
+          <div className="mb-4 p-3.5 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-between">
+            <div className="flex items-center gap-2.5 text-xs text-amber-900 font-medium">
+              <FiAlertCircle size={16} className="text-amber-600 shrink-0" />
+              <span>
+                <strong>Pengingat Opname Mingguan:</strong> Terdapat <strong>{periodicAlertCount}</strong> item kemasan periodik (sealtape, wrap, stiker, tutup) yang belum dicek fisik minggu ini.
+              </span>
+            </div>
+            <button
+              onClick={() => setShowOpnameModal(true)}
+              className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold cursor-pointer transition-colors"
+            >
+              Cek Fisik Sekarang
+            </button>
+          </div>
+        )}
+
         <div 
           className="flex gap-2 mb-6 p-4 rounded-t-lg"
           style={{ backgroundColor: colors.neutral.card, borderColor: colors.neutral.border }}
@@ -167,8 +211,10 @@ export default function MasterKemasanPage() {
                 <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500">KODE</th>
                 <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500">NAMA</th>
                 <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wide text-gray-500">KATEGORI</th>
+                <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wide text-gray-500">PEMANTAUAN</th>
                 <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide text-gray-500">STOK</th>
-                <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide text-gray-500">HARGA HPP</th>
+                <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide text-gray-500">STOK MIN</th>
+                <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide text-gray-500 cursor-help" title="HPP dinamis dari histori pembelian supplier (Weighted Average)">HARGA HPP</th>
                 <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wide text-gray-500">AKSI</th>
               </tr>
             </thead>
@@ -180,11 +226,34 @@ export default function MasterKemasanPage() {
                   <td className="px-6 py-4 text-center">
                     <span className="px-2.5 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">{item.category}</span>
                   </td>
+                  <td className="px-6 py-4 text-center">
+                    {item.isPeriodic ? (
+                      <span className="px-2.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                        Periodik (Mingguan)
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+                        Harian (Perpetual)
+                      </span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-right text-sm">{item.stock.toLocaleString('id-ID')}</td>
+                  <td className="px-6 py-4 text-right text-sm text-gray-500">
+                    {item.stockMin && item.stockMin > 0 ? `${item.stockMin.toLocaleString('id-ID')} pcs` : '-'}
+                  </td>
                   <td className="px-6 py-4 text-right text-sm font-medium" style={{ color: colors.neutral.textStrong }}>
-                    {item.avgCost > 0
-                      ? `Rp ${item.avgCost % 1 === 0 ? item.avgCost.toLocaleString('id-ID') : item.avgCost.toLocaleString('id-ID', { maximumFractionDigits: 2 })}`
-                      : 'Rp 0'}
+                    <span
+                      className="cursor-help text-gray-700"
+                      title={
+                        item.avgCost > 0
+                          ? "HPP dinamis dari histori pembelian supplier (Weighted Average)"
+                          : "Belum ada histori pembelian supplier (Rp 0)"
+                      }
+                    >
+                      {item.avgCost > 0
+                        ? `Rp ${item.avgCost % 1 === 0 ? item.avgCost.toLocaleString('id-ID') : item.avgCost.toLocaleString('id-ID', { maximumFractionDigits: 2 })}`
+                        : 'Rp 0'}
+                    </span>
                   </td>
                   <td className="px-6 py-4 text-center">
                     <div className="flex items-center justify-center gap-2">
@@ -231,6 +300,15 @@ export default function MasterKemasanPage() {
         onCancel={() => setDeletingItemId(null)}
         variant="danger"
       />
+
+      <PeriodicKemasanOpnameModal
+        isOpen={showOpnameModal}
+        onClose={() => setShowOpnameModal(false)}
+        onSuccess={() => {
+          fetchItems();
+          fetchPeriodicSummary();
+        }}
+      />
     </div>
   );
 }
@@ -242,7 +320,9 @@ function KemasanModal({ item, isLoading, onClose, onSubmit }: any) {
     name: item?.name || '',
     category: item?.category || 'PACKING',
     stock: item?.stock || 0,
+    stockMin: item?.stockMin ?? 0,
     avgCost: item?.avgCost || 0,
+    isPeriodic: item?.isPeriodic ?? false,
   });
 
   useEffect(() => {
@@ -297,6 +377,37 @@ function KemasanModal({ item, isLoading, onClose, onSubmit }: any) {
               <option value="SAFETY">SAFETY (Sealtape, Bubble, Plastik Wrapping)</option>
               <option value="DUS">DUS (Box Kemasan Luar)</option>
             </select>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Metode Pemantauan</label>
+            <select 
+              className="w-full px-3 py-2 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer" 
+              value={formData.isPeriodic ? 'true' : 'false'} 
+              onChange={e => setFormData({...formData, isPeriodic: e.target.value === 'true'})}
+              disabled={isLoading}
+            >
+              <option value="false">Harian (Perpetual) — Botol & Dus Utama (Dihitung real-time)</option>
+              <option value="true">Periodik (Mingguan) — Sealtape, Wrap, Stiker (Opname mingguan)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+              Stok Minimum {formData.isPeriodic ? '(Opsional - Periodik)' : '(Alert Restock)'}
+            </label>
+            <NumberInput 
+              className="border bg-white" 
+              value={formData.stockMin} 
+              onChange={(val) => setFormData({...formData, stockMin: val})}
+              suffix="pcs"
+              showPreview
+              placeholder="0"
+              disabled={isLoading}
+            />
+            <p className="text-[11px] text-gray-500 mt-1">
+              {formData.isPeriodic 
+                ? 'Item periodik dipantau mingguan via Opname Mingguan. Stok minimum opsional.'
+                : 'Alert restock muncul jika stok di bawah angka ini. Isi 0 jika item tidak memerlukan batas minimum.'}
+            </p>
           </div>
 
           {/* Kondisi Mode Edit vs Mode Tambah Baru */}

@@ -35,11 +35,60 @@ export async function GET(req: Request) {
       const ch = costMap.get(sku.id);
       const stock = ch !== undefined ? ch.stock : invStock;
       const avgCost = ch?.avgCost ?? sku.hppPrice ?? 0;
+
+      // Enrich BOM components with real-time costs for validation
+      const enrichedBom = sku.bomComponents?.map(comp => {
+        let unitCost = 0;
+        let childName = '';
+        let childCode = '';
+        let childProductSize = 0;
+
+        if (comp.category === 'RAW' && comp.childSku) {
+          const childCh = costMap.get(comp.childSkuId!);
+          unitCost = childCh?.avgCost ?? comp.childSku.hppPrice ?? 0;
+          childName = comp.childSku.name;
+          childCode = comp.childSku.code;
+          childProductSize = comp.childSku.productSize || 0;
+        } else if (comp.childKemasan) {
+          unitCost = comp.childKemasan.avgCost ?? 0;
+          childName = comp.childKemasan.name;
+          childCode = comp.childKemasan.code;
+        }
+
+        const totalCost = comp.quantity * unitCost;
+
+        return {
+          ...comp,
+          unitCost,
+          totalCost,
+          childName,
+          childCode,
+          childProductSize,
+        };
+      }) || [];
+
+      const rawCost = sku.type === 'RAW'
+        ? (avgCost || 0)
+        : enrichedBom
+            .filter(c => c.category === 'RAW')
+            .reduce((sum, c) => sum + c.totalCost, 0);
+
+      const packagingCost = enrichedBom
+        .filter(c => c.category !== 'RAW')
+        .reduce((sum, c) => sum + c.totalCost, 0);
+
+      const estimatedBomHpp = rawCost + packagingCost;
+
       const { inventory, ...rest } = sku;
       return {
         ...rest,
+        unit: sku.unit || 'ml',
         stock,
         avgCost,
+        rawCost,
+        packagingCost,
+        estimatedBomHpp,
+        bomComponents: enrichedBom,
       };
     });
 
@@ -77,8 +126,9 @@ export async function POST(req: Request) {
           name,
           type: type as SKUType,
           productSize: body.productSize || 0,
+          unit: body.unit || 'ml',
           hppPrice: body.hppPrice || 0,
-          sellingPrice: type === 'PACKAGE' ? sellingPrice : null,
+          sellingPrice: sellingPrice !== undefined && sellingPrice !== null && sellingPrice !== '' ? parseFloat(sellingPrice) : null,
           stockMin,
         },
       });

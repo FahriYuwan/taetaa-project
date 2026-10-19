@@ -18,7 +18,16 @@
 10. [Perubahan 10: Input Pemisah Ribuan Format Indonesia (NumberInput.tsx) di Seluruh Modal](#10-perubahan-10-input-pemisah-ribuan-format-indonesia-numberinputtsx-di-seluruh-modal)
 11. [Perubahan 11: Transformasi HPP Dinamis & Bulk Paste Master SKU Modern](#11-perubahan-11-transformasi-hpp-dinamis--bulk-paste-master-sku-modern)
 12. [Perubahan 12: Rekonstruksi Seeder Database Sesuai Siklus Riil Excel AGUSTUS 2026](#12-perubahan-12-rekonstruksi-seeder-database-sesuai-siklus-riil-excel-agustus-2026)
-13. [Tabel Cheatsheet Ringkasan](#13-tabel-cheatsheet-ringkasan)
+13. [Perubahan 14: Integrasi Pembelian Kemasan Dinamis & Penyelarasan Seeder](#14-perubahan-14-integrasi-pembelian-kemasan-dinamis-auto-weighted-average--penyelarasan-seeder)
+14. [Perubahan 15: Validasi HPP Transparan via Modal Ledger Rincian BOM (BOMDetailModal) & Drawer Penjualan](#15-perubahan-15-validasi-hpp-transparan-via-modal-ledger-rincian-bom-bomdetailmodal--drawer-penjualan)
+15. [Perubahan 16: Dukungan Penjualan Langsung Bahan Baku (RAW) & Fleksibilitas Rekomendasi Harga Owner](#16-perubahan-16-dukungan-penjualan-langsung-bahan-baku-raw--fleksibilitas-rekomendasi-harga-owner)
+16. [Perubahan 17: Integrasi Inventori Kemasan & Peringatan Stok Minimum](#17-perubahan-17-integrasi-inventori-kemasan--peringatan-stok-minimum)
+17. [Perubahan 18: Pemisahan Metode Pemantauan Kemasan (Harian vs Periodik) & Fitur Opname Mingguan](#18-perubahan-18-pemisahan-metode-pemantauan-kemasan-harian-vs-periodik--fitur-opname-mingguan)
+18. [Perubahan 19: Verifikasi Sistem 13 Item Kemasan Diskret & Migrasi Penuh Seluruh Data Spreadsheet Agustus 2026](#19-perubahan-19-verifikasi-sistem-13-item-kemasan-diskret--migrasi-penuh-seluruh-data-spreadsheet-agustus-2026)
+19. [Perubahan 20: Dukungan Satuan Kuantitas (pcs vs ml) Master SKU & Reklasifikasi LEATHER BALSAM](#20-perubahan-20-dukungan-satuan-kuantitas-pcs-vs-ml-master-sku--reklasifikasi-leather-balsam)
+20. [Perubahan 21: Tooltip Transparansi HPP Master Kemasan & Verifikasi Kondisi Item RAW di Excel Agustus 2026](#21-perubahan-21-tooltip-transparansi-hpp-master-kemasan--verifikasi-kondisi-item-raw-di-excel-agustus-2026)
+21. [Perubahan 22: Penyelarasan HPP Komprehensif & Transparansi BOM untuk Item RAW Berkardus (Kasus SRB, SST, SSF, SPR)](#22-perubahan-22-penyelarasan-hpp-komprehensif--transparansi-bom-untuk-item-raw-berkardus-kasus-srb-sst-ssf-spr)
+22. [Tabel Cheatsheet Ringkasan](#13-tabel-cheatsheet-ringkasan)
 
 ---
 
@@ -483,6 +492,9 @@ File [prisma/seed-demo.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/p
 | **Scanner Modal** | [ScannerModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/ScannerModal.tsx), [useScannerFlow.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/hooks/useScannerFlow.ts) | File monolitik >780 baris mencampur UI dan logika. | Logika dipisah ke custom hook `useScannerFlow`. |
 | **Pengujian** | `tests/*.test.ts`, [package.json](file:///d:/File%20Fahri/Semester%208/taetaa-project/package.json) | 0 automated test; rentan regresi saat diubah. | Test suite otomatis via `npm test` (20/20 tes lolos). |
 | **Pembelian Kemasan Dinamis** | [schema.prisma](file:///d:/File%20Fahri/Semester%208/taetaa-project/prisma/schema.prisma), [purchases/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/purchases/route.ts), [AddPurchaseModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddPurchaseModal.tsx), [seed-demo.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/prisma/seed-demo.ts) | Kemasan hanya diinput manual di Master Kemasan; jika harga vendor berubah, stok lama tertimpa dan tidak ada riwayat belanja. | Relasi `Purchase.kemasanId` + auto-weighted-average saat catat pembelian kemasan + seeder riil sheet RECENT PURCHASE. |
+| **Validasi HPP BOM** | [BOMDetailModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/BOMDetailModal.tsx), [page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/master-sku/page.tsx), [SaleDetailDrawer.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/SaleDetailDrawer.tsx) | Angka HPP produk jadi tidak transparan; user tidak tahu porsi biaya bahan baku vs kemasan/safety. | Ledger interaktif dua seksi (Bahan vs Kemasan & Safety) dengan kalkulasi unit cost real-time, tombol HPP interaktif di Master SKU, dan tombol validasi di Drawer Penjualan. |
+| **Penjualan Langsung RAW** | [AddSaleModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddSaleModal.tsx), [bulk/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/sales/bulk/route.ts) | Dropdown penjualan membatasi hanya tipe PACKAGE, bahan baku (RAW) tidak bisa dijual langsung ke pembeli via modal. | Dropdown membuka seluruh SKU (`RAW`, `PRODUCT`, `PACKAGE`), memotong stok gudang, dan mencatat HPP berbasis `avgCost` bahan baku. |
+| **Rekomendasi Harga Owner** | [page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/master-sku/page.tsx), [AddEditSKUModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddEditSKUModal.tsx), [AddSaleModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddSaleModal.tsx) | Kerancuan label "Harga Jual" di master SKU dianggap mutlak; form modal membatasi input harga hanya untuk PACKAGE. | Header distandarkan menjadi `REKOMENDASI HARGA` sebagai acuan owner, dengan dukungan harga custom fleksibel saat input transaksi penjualan. |
 
 ---
 
@@ -508,6 +520,271 @@ File [prisma/seed-demo.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/p
    - **Step 1**: Inisialisasi `MasterItemKemasan` dengan stok 0 dan avgCost 0.
    - **Step 4**: Menambahkan transaksi riil pembelian kemasan dari sheet `RECENT PURCHASE` (`BTL1`, `BTL2`, `FOM3`, `DUS2`, `DUS3`, `SLTP`, `PLWR`, `STK1`, dll.) ke dalam tabel `Purchase`.
    - **Step 5**: Produksi menyerap stok dan HPP kemasan hasil pembelian tersebut secara terpadu.
+
+---
+
+## 15. Perubahan 15: Validasi HPP Transparan via Modal Ledger Rincian BOM (BOMDetailModal) & Drawer Penjualan
+
+### 📌 Masalah Sebelumnya
+1. **Kurangnya Transparansi Biaya Pokok (HPP)**: Pada halaman Master SKU dan Drawer Penjualan, HPP hanya muncul sebagai angka nominal tunggal (misal: `Rp 6.949,40`). Staf maupun pemilik tidak bisa melihat seberapa besar porsi biaya yang berasal dari bahan mentah/cairan (`RAW`) versus biaya packaging (botol, stiker, kardus, sealtape, plastik wrap).
+2. **Kesulitan Audit & Validasi**: Ketika laba pesanan menipis atau HPP naik, pengguna tidak dapat memvalidasi langsung apakah kenaikan tersebut dipicu oleh lonjakan harga bahan kimia parfum atau kenaikan harga vendor botol/dus.
+
+### 💡 Solusi Baru
+1. **Modal Ledger Rincian BOM ([BOMDetailModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/BOMDetailModal.tsx))**:
+   - Menghadirkan ledger terstruktur dengan pembagian dua bagian tabel yang bersih dan mudah dibaca:
+     - **Bahan Baku (Cairan / Komposisi Formulasi)**: Kode SKU, Nama Bahan, Takaran (ml/L), Rasio, HPP Satuan Bahan Baku, dan Subtotal Biaya.
+     - **Kemasan, Dus & Safety**: Botol, Tutup Segel, Stiker Depan/Belakang, Dus Box, Sealtape, dan Plastik Wrap lengkap dengan satuan (pcs) dan tipe konsumsi (*Otomatis* vs *Manual*).
+   - Tiga kartu KPI ringkasan di bagian atas modal: **Total HPP BOM**, **Subtotal Bahan Baku**, dan **Subtotal Kemasan & Safety**.
+2. **HPP Interaktif di Master SKU ([app/master-sku/page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/master-sku/page.tsx))**:
+   - Sel tabel HPP pada tipe `PRODUCT` dan `PACKAGE` diubah menjadi tombol interaktif dengan ikon info dan tooltip breakdown biaya (*Bahan: Rp X + Kemasan: Rp Y*). Mengklik angka HPP langsung membuka `BOMDetailModal`.
+3. **Validasi dari Drawer Detail Penjualan ([SaleDetailDrawer.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/SaleDetailDrawer.tsx))**:
+   - Pada kartu ringkasan keuangan pesanan di bawah baris Total Beban Modal (HPP), ditambahkan aksi **`🔍 Validasi Rincian BOM Produk`**.
+   - Finance dapat mengaudit komposisi HPP produk yang terjual tanpa harus berpindah ke halaman Master SKU.
+
+---
+
+## 16. Perubahan 16: Dukungan Penjualan Langsung Bahan Baku (RAW) & Fleksibilitas Rekomendasi Harga Owner
+
+### 📌 Masalah Sebelumnya
+1. **Restriksi Dropdown Penjualan Manual**: File [AddSaleModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddSaleModal.tsx) sebelumnya membatasi query SKU ke `/api/skus?type=PACKAGE`. Di dunia nyata, bisnis sering menjual bahan baku mentah (`RAW`) seperti sedotan stainless, botol tester curah, atau jerigen sabun langsung ke pembeli/reseller.
+2. **Penyembunyian Harga Jual di Master SKU**: Modal [AddEditSKUModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddEditSKUModal.tsx) menyembunyikan input harga jual jika SKU bukan `PACKAGE`, dan API backend mereset harga jual non-PACKAGE menjadi `null`.
+3. **Kerancuan Persepsi Harga**: Istilah header `HARGA JUAL` pada Master SKU membuat pengguna bingung apakah harga tersebut bersifat mutlak/kaku, sementara di marketplace atau transaksi langsung harga sangat dinamis (dapat berupa harga promosi, flash sale, atau negosiasi borongan custom).
+
+### 💡 Solusi Baru
+1. **Penjualan Langsung Semua Tipe SKU**:
+   - [AddSaleModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddSaleModal.tsx) memanggil seluruh SKU aktif (`RAW`, `PRODUCT`, `PACKAGE`) lengkap dengan tag tipe (`[RAW]`, `[PACKAGE]`).
+   - Pemotongan inventori gudang (`MovementType.SALE`) dan HPP dari mutasi rata-rata tertimbang (`sKUCostHistory.avgCost`) berjalan otomatis dan akurat untuk bahan baku.
+   - Bulk Paste Finance ([app/api/sales/bulk/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/sales/bulk/route.ts)) memvalidasi dan memproses kode SKU dari semua tipe tanpa batasan.
+2. **Standarisasi "Rekomendasi Harga Jual" Owner**:
+   - Kolom tabel Master SKU ([app/master-sku/page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/master-sku/page.tsx)) diubah menjadi **`REKOMENDASI HARGA`** dengan tooltip penjelas *"Rekomendasi harga patokan yang diinputkan oleh owner"*.
+   - Input pada [AddEditSKUModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddEditSKUModal.tsx) diubah menjadi **`Rekomendasi Harga Jual`** yang terbuka untuk seluruh tipe SKU (opsional untuk RAW/PRODUCT jika dijual langsung).
+   - Backend API ([app/api/skus/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/skus/route.ts), [app/api/skus/[id]/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/skus/%5Bid%5D/route.ts), [app/api/skus/bulk/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/skus/bulk/route.ts)) mempertahankan nilai `sellingPrice` untuk seluruh tipe SKU.
+3. **Fleksibilitas Harga Custom di Transaksi Penjualan**:
+   - Di [AddSaleModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddSaleModal.tsx), field **`Harga Jual Satuan`** otomatis terisi rekomendasi harga owner sebagai default saat SKU dipilih, namun pengguna tetap bebas mengeditnya sesuai nominal transaksi riil (custom price / promo).
+
+---
+
+## 17. Perubahan 17: Integrasi Inventori Kemasan & Peringatan Stok Minimum
+
+### 📌 Latar Belakang & Masalah
+1. **Pemisahan Pemantauan Stok**: Data stok item kemasan (dus, botol flip top, spray, foam, dll.) sebelumnya hanya terisolasi di halaman Master Kemasan dan tidak terintegrasi ke dalam [Dashboard Inventory](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/inventory/page.tsx).
+2. **Kebutuhan Tim Gudang (13 Item Diskret)**: Berdasarkan evaluasi operasional lapangan, staf gudang membutuhkan pemantauan ketat kuantitas fisik untuk 13 item kemasan primer dan dus:
+   - DUS PACKAGING GRIP PADEL
+   - BOTOL 1 LITER, BOTOL 500 ML, BOTOL 250 ML
+   - BOTOL FLIP TOP 100 ML, BOTOL FLIP TOP 70 ML
+   - BOTOL FOAM 100 ML, BOTOL FOAM 60 ML
+   - BOTOL SPRAY 100 ML, BOTOL SPRAY 70 ML, BOTOL SPRAY 30 ML, BOTOL SPRAY GRIP
+   - BOTOL KERUCUT 100 ML
+   Sementara barang habis pakai sekunder (sealtape roll, plastik wrap roll) sulit dan tidak efisien jika dihitung harian.
+3. **Ketiadaan Peringatan Stok Kritis (Restock Alert)**: Master Kemasan belum memiliki kolom batas minimum stok (`stockMin`), sehingga jika persediaan botol habis saat jadwal produksi, proses perakitan tertahan tiba-tiba tanpa peringatan dini.
+
+### 💡 Solusi Baru
+1. **Schema Database Prisma (`prisma/schema.prisma`)**:
+   - Ditambahkan field `stockMin Float? @default(0)` pada model `MasterItemKemasan`.
+2. **Master Kemasan ([app/master-kemasan/page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/master-kemasan/page.tsx))**:
+   - Kolom **`STOK`** tetap dipertahankan sebagai saldo real-time gudang (tidak dihapus).
+   - Ditambahkan kolom **`STOK MIN`** pada tabel master kemasan.
+   - Modal tambah/edit kemasan dilengkapi input **`Stok Minimum (Alert Restock)`** yang dapat dikonfigurasi kapan saja.
+3. **Integrasi Dashboard Inventory ([app/inventory/page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/inventory/page.tsx))**:
+   - Ditambahkan tab filter **`Kemasan`** bersama SKU RAW, Product, dan Package.
+   - Kartu KPI ringkasan finansial diperbarui menjadi 4 kartu seimbang: Total Semua Barang, Total RAW, Total Product & Package, dan Total Kemasan.
+   - Backend API ([app/api/inventory/summary/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/inventory/summary/route.ts)) menghitung mutasi kemasan secara paralel tanpa N+1 query:
+     - `stockAwal`: Stok saat ini dikurangi pembelian periode ini ditambah pemakaian produksi periode ini.
+     - `masukBeli`: Akumulasi kuantitas pembelian kemasan pada periode terpilih.
+     - `keluarProduksi`: Akumulasi pemakaian kemasan dari tabel `ProductionKemasanInput`.
+     - `stockAkhir`: Saldo stok aktual saat ini.
+4. **Peringatan Restock Kemasan Terpadu ([app/api/inventory/restock-alerts/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/inventory/restock-alerts/route.ts))**:
+   - Sistem memeriksa seluruh kemasan yang memiliki `stockMin > 0` dan `stock < stockMin`.
+   - Alert modal ([RestockAlertModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/RestockAlertModal.tsx)) menampilkan badge hijau `Kemasan` lengkap dengan kuantitas kekurangan dan estimasi biaya belanja.
+5. **Rekomendasi Best Practice Lean Inventory**:
+   - **13 Item Diskret (Botol & Dus)**: Dipantau secara perpetual real-time dengan batas `stockMin` terpasang.
+   - **Item Konsumabel (Sealtape & Plastik Wrap)**: Dikelola menggunakan metode *Two-Bin Visual Kanban* dan opname periodik mingguan (staf cukup memastikan ada cadangan 1 roll utuh di rak tanpa perlu mengukur sisa meter setiap hari).
+
+---
+
+## 18. Perubahan 18: Pemisahan Metode Pemantauan Kemasan (Harian vs Periodik) & Fitur Opname Mingguan
+
+### 📌 Latar Belakang & Masalah
+1. **Inefisiensi Operasional Penghitungan Kemasan**: Tim inventaris gudang melaporkan bahwa menghitung barang habis pakai (sealtape roll, plastik wrap roll, stiker lembaran, tutup botol standar) setiap hari sangat menyita waktu dan tidak realistis. Hanya 11-13 item kemasan diskret (berbagai jenis botol dan dus kemasan luar) yang mudah dan wajib dihitung per pcs setiap hari.
+2. **Kebutuhan Fitur Opname Periodik Mingguan**: Meskipun tidak dihitung harian, item konsumabel tetap harus dipantau secara berkala (misalnya 1 minggu sekali) agar tidak sampai kehabisan gulungan lakban atau plastik wrap di gudang saat jadwal pengiriman paket.
+
+### 💡 Solusi Baru
+1. **Field Metode Pemantauan di Database (`MasterItemKemasan`)**:
+   - `isPeriodic Boolean? @default(false)`: Membedakan item yang dihitung harian (`false`) versus periodik mingguan (`true`).
+   - `lastOpname DateTime?`: Menyimpan cap waktu verifikasi fisik terakhir.
+2. **Tampilan & Label di Master Kemasan ([app/master-kemasan/page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/master-kemasan/page.tsx))**:
+   - Kolom **`PEMANTAUAN`** pada tabel menampilkan status:
+     - **Harian (Perpetual)**: Warna biru untuk botol & dus utama.
+     - **Periodik (Mingguan)**: Warna amber untuk sealtape, wrap, stiker, tutup.
+   - Modal tambah/edit kemasan menyediakan dropdown pilihan metode pemantauan.
+3. **Fitur & Modal Opname Mingguan ([PeriodicKemasanOpnameModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/PeriodicKemasanOpnameModal.tsx))**:
+   - Modal terdedikasi untuk staf gudang meninjau item periodik, melihat stok sistem, dan langsung menginputkan stok fisik riil hasil hitungan mingguan.
+   - Dilengkapi sistem deteksi keterlambatan cek: jika item belum pernah dicek atau sudah $\ge 7$ hari sejak cek fisik terakhir, label peringatan dan badge tombol akan berubah warna menjadi amber.
+4. **Endpoint API Opname Periodik ([app/api/kemasan/opname-periodik/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/kemasan/opname-periodik/route.ts))**:
+   - `GET`: Mengambil seluruh kemasan periodik beserta kalkulasi selisih hari (`daysSinceLastOpname`) dan status kebutuhan cek (`needsOpname`).
+   - `POST`: Menyimpan batch stok fisik baru dalam satu transaksi database atomik dan memperbarui `lastOpname = now()`.
+5. **Akses Cepat dari Dashboard Inventory ([app/inventory/page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/inventory/page.tsx))**:
+   - Saat tab `Kemasan` aktif, muncul banner informatif lengkap dengan tombol **"Form Opname Mingguan"** untuk mempermudah akses staf.
+6. **Sinkronisasi Seeder Database (`prisma/seed-demo.ts`)**:
+   - Seluruh 11-13 item botol dan dus diskret diinisialisasi sebagai `isPeriodic: false` dengan batas `stockMin`.
+   - Item sealtape, wrap, tutup, dan stiker diinisialisasi sebagai `isPeriodic: true`.
+   - Seeder dieksekusi ke database sehingga data aktif sistem langsung mencerminkan aturan bisnis yang disepakati.
+
+---
+
+## 19. Perubahan 19: Verifikasi Sistem 13 Item Kemasan Diskret & Migrasi Penuh Seluruh Data Spreadsheet Agustus 2026
+
+### 📌 Latar Belakang & Permintaan
+1. **Verifikasi 13 Item Kemasan Diskret**: Memastikan kembali di dalam sistem bahwa hanya 13 item spesifik yang dipantau harian dan berkurang otomatis secara 1:1 saat produksi, yaitu:
+   - DUS PACKAGING GRIP PADEL (`DUSG`)
+   - BOTOL 1 LITER (`BTL1`)
+   - BOTOL 500 ML (`BTL2`)
+   - BOTOL 250 ML (`BTL3`)
+   - BOTOL FLIP TOP 100 ML (`FLP3`)
+   - BOTOL FLIP TOP 70 ML (`FLP4`)
+   - BOTOL FOAM 100 ML (`FOM3`)
+   - BOTOL FOAM 60 ML (`FOM4`)
+   - BOTOL SPRAY 100 ML (`SPR3`)
+   - BOTOL SPRAY 70 ML (`SPR4`)
+   - BOTOL SPRAY 30 ML (`SPR5`)
+   - BOTOL SPRAY GRIP (`SPRG`)
+   - BOTOL KERUCUT 100 ML (`KRC3`)
+   Sedangkan 31 item kemasan konsumabel lainnya (Dus 1..8, Lakban, Bubble Wrap, Tutup Botol, Tutup Spray, Sealtape, Plastik Wrap, Stiker, Ziplock, Polymailer, Kresek, Pouch, Resi) dipantau secara periodik mingguan melalui Opname Mingguan.
+2. **Migrasi Penuh Data Spreadsheet**: Mengisi seluruh data operasional riil dari workbook referensi `documentation/reference_seeder/Copy of Copy of AGUSTUS 2026.xlsx` ke dalam database PostgreSQL sistem.
+
+### 💡 Implementasi & Hasil
+1. **Ekstraksi Data Terstruktur ([prisma/seed-data/](file:///d:/File%20Fahri/Semester%208/taetaa-project/prisma/seed-data/))**:
+   - Seluruh sheet referensi diekstraksi ke format JSON:
+     - `sku_master.json`: 260 item katalog produk dan kemasan.
+     - `recent_purchase.json`: 32 transaksi pembelian fisik Agustus 2026.
+     - `cogs_raw.json`, `cogs_wip.json`, `cogs_marketplace.json`: Biaya pokok dan formula HPP.
+     - `shopee.json`: 1.707 transaksi penjualan Shopee.
+     - `tokopedia.json`: 202 transaksi penjualan Tokopedia dan TikTok Shop.
+2. **Pembaruan Seeder Otomatis ([prisma/seed-demo.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/prisma/seed-demo.ts))**:
+   - **MasterItemKemasan**: 44 item (13 diskret harian dengan `isPeriodic: false` dan `stockMin > 0`, 31 konsumabel dengan `isPeriodic: true` dan `stockMin: 0`).
+   - **SKU**: 221 SKU (65 RAW, 62 PRODUCT/WIP, 94 PACKAGE) lengkap dengan `SKUCostHistory`.
+   - **Pembelian Riil**: 32 transaksi dari `RECENT PURCHASE` membentuk stok awal dan HPP rata-rata tertimbang (*Weighted Average*).
+   - **Resep BOM**: 928 relasi komponen otomatis menghubungkan RAW dan Kemasan ke setiap produk WIP dan PACKAGE.
+   - **Penjualan Lengkap**: 1.909 transaksi (1.707 Shopee + 202 Tokopedia/TikTok) dengan mutasi persediaan keluar yang sesuai.
+3. **Verifikasi Nilai Finansial Sistem**:
+   - **Total Transaksi Penjualan**: 1.909 baris transaksi.
+   - **Total Omset Sistem**: Rp 55.460.162,98 (Shopee Rp 49.735.519,60 + Tokopedia/TikTok Rp 5.724.643,38). Tepat 100% cocok dengan sheet `INCOME STATEMENT` baris 13.
+   - **Total Laba Tercatat**: Rp 33.389.646,04.
+   - **Total Item Inventaris**: 265 item aktif di dashboard persediaan.
+
+---
+
+## 20. Perubahan 20: Dukungan Satuan Kuantitas (pcs vs ml) Master SKU & Reklasifikasi LEATHER BALSAM
+
+### 📌 Latar Belakang & Masalah
+1. **Satuan SKU Tidak Semuanya Mililiter (ml)**: SKU pada sistem Taetaa mencakup item fisik padat seperti sikat sepatu (Standard, Premium, Horsehair), spons aplikator (Pad), kain microfiber, sarung tangan, kaus kaki, shoe tree, shoe stretcher, dan paket bundling (Starter Kit, Bundling Kit). Sebelumnya seluruh ukuran di antarmuka Master SKU diasumsikan mililiter (`ml`), sehingga sikat atau spons tampil canggung seperti `1 ml` alih-alih `1 pcs`.
+2. **Status Jenis LEATHER BALSAM**: Produk "LEATHER BALSAM" (`LBL`) di sistem lama terdaftar sebagai tipe `RAW` (Bahan Baku). Padahal dalam praktik penjualan riil, Leather Balsam yang dijual kepada konsumen merupakan paket siap pakai yang terdiri dari balsem perawatan kulit (`LBL`) ditambah spons aplikator (`PAD`) beserta botol, tutup, dan dus kemasannya. Sesuai kesepakatan dengan owner/user, `LBL` lebih tepat dan akurat dijadikan tipe `PACKAGE`.
+
+### 💡 Solusi & Implementasi Teknis
+1. **Struktur Data Database (`prisma/schema.prisma`)**:
+   - Menambahkan kolom `unit String? @default("ml")` pada `model SKU`.
+   - Melakukan sinkronisasi schema via Prisma (`npx prisma db push`).
+2. **Klasifikasi Otomatis pada Seeder Database (`prisma/seed-demo.ts`)**:
+   - Fungsi penentu satuan otomatis `getSkuUnit(code, name, size)`:
+     - Item fisik seperti sikat, spons pad, kain, sarung tangan, kaus kaki, penjepit, shoe tree, serta bundling package otomatis ditetapkan memiliki `unit = "pcs"`.
+     - Item cairan kimia seperti pembersih, sabun, unyellowing, parfum, deodorizer, water repellent, dan lotion tetap menggunakan `unit = "ml"`.
+   - Mengubah `LBL` (Leather Balsam) menjadi:
+     - `type: SKUType.PACKAGE`
+     - `unit: "pcs"`
+     - `productSize: 1`
+     - `sellingPrice: 25461`
+   - Membentuk Bill of Materials (BOM) untuk `LBL`:
+     - Komponen Bahan: `PAD` (Spons Pad Aplikator)
+     - Komponen Kemasan: `FLP3` (Botol Flip Top 100ml), `TBTL` (Tutup Botol), `DUS2` (Dus 6x6x17)
+     - Proteksi pencegahan siklus BOM (`childSku.id === parentSku.id`).
+3. **Backend API (`/api/skus`, `/api/skus/[id]`, `/api/skus/bulk`)**:
+   - Endpoint `POST` dan `PUT` menerima, memvalidasi, dan menyimpan field `unit` (`ml` atau `pcs`).
+   - Endpoint `GET` mengembalikan `unit` dengan fallback default `'ml'` untuk ketahanan data.
+   - Endpoint `bulk` paste SKU mendeteksi kolom satuan secara otomatis saat import massal.
+4. **Antarmuka Pengguna & Modal**:
+   - **Tabel Master SKU ([app/master-sku/page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/master-sku/page.tsx))**:
+     - Header kolom diubah menjadi **`UKURAN / KUANTITAS`**.
+     - Render dinamis: item satuan tampil sebagai `${productSize} pcs`, sedangkan item volume tampil sebagai `${productSize} ml` (atau `${productSize / 1000} L` untuk ukuran $\ge 1000$).
+   - **Modal Tambah/Edit SKU ([AddEditSKUModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/AddEditSKUModal.tsx))**:
+     - Ditambahkan toggle interaktif satuan: `ml (Volume)` vs `pcs (Kuantitas)`.
+     - Label dan akhiran input berganti dinamis mengikuti satuan yang dipilih.
+   - **Modal Rincian BOM ([BOMDetailModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/BOMDetailModal.tsx))**:
+     - Menampilkan kuantitas komponen dan ukuran induk sesuai satuan masing-masing.
+
+### 🔍 Hasil Verifikasi Sistem
+- **Distribusi Satuan SKU**: Dari total 221 SKU aktif di database, 118 SKU berstatus `pcs` dan 103 SKU berstatus `ml`.
+- **Status LEATHER BALSAM**: Berhasil menjadi tipe `PACKAGE` dengan BOM lengkap (Spons Pad + Botol Flip Top + Tutup + Dus).
+- **Integritas Tes**: 20/20 unit test otomatis lolos (`npm test`), 0 error kompilasi TypeScript (`npx tsc --noEmit`).
+
+---
+
+## 21. Perubahan 21: Tooltip Transparansi HPP Master Kemasan & Verifikasi Kondisi Item RAW di Excel Agustus 2026
+
+### 📌 Latar Belakang & Permintaan
+1. **Transparansi Keterangan HPP Kemasan**: Pada halaman Master Kemasan ([app/master-kemasan/page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/master-kemasan/page.tsx)), nilai HPP sebelumnya ditampilkan sebagai teks polos tanpa tooltip atau penjelasan sumber kalkulasi, berbeda dengan item RAW seperti `SDT` di Master SKU yang memiliki indikator `cursor-help` dan tooltip asal-usul HPP.
+2. **Verifikasi Kondisi Item RAW di Excel**: Memeriksa seluruh sheet referensi `documentation/reference_seeder/Copy of Copy of AGUSTUS 2026.xlsx` (`SKU MASTER`, `RECENT PURCHASE`, `CALCULATOR`, `COGS RAW`, `COGS MARKETPLACE`) untuk memverifikasi apakah ada item RAW lain yang memiliki kondisi serupa dengan `SDT` (misal memiliki transaksi pembelian supplier riil, formula HPP, atau kondisi gabungan komponen).
+
+### 💡 Implementasi & Hasil Analisis Excel
+
+#### A. Penambahan Tooltip HPP pada Master Kemasan
+- **Header Tabel**: Ditambahkan atribut `title="HPP dinamis dari histori pembelian supplier (Weighted Average)"` dan kelas interaktif `cursor-help`.
+- **Baris Item Kemasan**:
+  - Item dengan `avgCost > 0`: Menampilkan tooltip `HPP dinamis dari histori pembelian supplier (Weighted Average)`.
+  - Item dengan `avgCost === 0`: Menampilkan tooltip `Belum ada histori pembelian supplier (Rp 0)`.
+- **Penyelarasan Master SKU**: Baris SKU tipe RAW juga diselaraskan secara dinamis sehingga membedakan item yang sudah memiliki histori pembelian versus yang masih Rp 0.
+
+#### B. Hasil Verifikasi Mendalam pada File Excel Agustus 2026
+1. **Item RAW dengan Histori Pembelian Supplier (`RECENT PURCHASE`)**:
+   - Di Excel sheet `RECENT PURCHASE`, hanya tercatat **5 item RAW** yang memiliki faktur pembelian di bulan Agustus 2026:
+     - `SDT` (Sikat Detailing): Dibeli 200 unit seharga Rp 278.069 pada 11 Agustus 2026 -> HPP Rp 1.390,35.
+     - `SKE` (Sikat Kimo Eternal Kimo): Dibeli 120 unit seharga Rp 245.363 pada 15 Agustus 2026 -> HPP Rp 2.044,69.
+     - `APS` (Aksesoris Pencokel Sepatu): Dibeli 20 unit seharga Rp 32.500 pada 29 Agustus 2026 -> HPP Rp 1.625,00.
+     - `ASS` (Aksesoris Sendok Sepatu): Dibeli 20 unit seharga Rp 82.670 pada 11 Agustus 2026 -> HPP Rp 4.133,50.
+     - `AQDS` (Aquades): Dibeli 175 unit seharga Rp 119.656 pada 05 Agustus 2026 -> HPP rata-rata Rp 435,11.
+   - 59 item RAW lainnya di Excel memang tidak memiliki faktur belanja di bulan Agustus 2026 (sehingga HPP di sheet `COGS RAW` bernilai kosong / Rp 0).
+2. **Item RAW dengan Komposisi Ganda (seperti LEATHER BALSAM `LBL`)**:
+   - Pengecekan kolom `KOMPONEN` pada sheet `SKU MASTER` untuk seluruh 65 kode RAW membuktikan bahwa **hanya `LBL` satu-satunya item RAW yang memiliki lebih dari satu komponen (`LBL PAD`)**. Seluruh item RAW lainnya adalah bahan tunggal murni atau kemasan lusin (`12.0` seperti kaos kaki).
+3. **Item RAW yang Dijual Langsung**:
+   - Sebanyak 26 item RAW fisik (seperti sikat, kain microfiber, kaos kaki, dan penjepit) tercatat memiliki transaksi penjualan langsung di marketplace (Shopee & Tokopedia), dan arsitektur sistem sudah mendukung transaksi langsung untuk item RAW ini.
+4. **Catatan Khusus Kemasan `DUS1` di Sheet CALCULATOR**:
+   - Item `DUS1` (Dus 5x5x15) memiliki nilai manual Rp 300,00 di sheet `CALCULATOR` baris 2, meskipun tidak ada transaksi pembelian baru di bulan Agustus.
+
+---
+
+## 22. Perubahan 22: Penyelarasan HPP Komprehensif & Transparansi BOM untuk Item RAW Berkardus (Kasus SRB, SST, SSF, SPR)
+
+### 📌 Latar Belakang & Pertanyaan Pengguna
+Pada halaman Master SKU, item sikat seperti `SRB` (SIKAT RUBBER SUEDE BESAR) sebelumnya menampilkan HPP Rp 0 dan kolom BOM bertanda `-`. Pengguna mempertanyakan:
+> *"HPP yang tertera di halaman master SKU itu maksudnya cogs itemnya saja berarti? tanpa disertai saat memakai dus dll? apa gimana? apakah konsisten dengan lainnya? dan sesuai dengan excel?"*
+
+### 💡 Penjelasan Arsitektur Data & Analisis Excel
+1. **Maksud HPP di Master SKU Sebelumnya**:
+   - Tepat sekali. Nilai HPP Rp 0 pada `SRB` sebelumnya adalah **COGS bahan mentahnya saja** (karena `SRB` dikelompokkan sebagai tipe `RAW`, dan pada bulan Agustus 2026 belum ada faktur belanja supplier untuk SRB).
+   - Angka tersebut **belum menyertakan biaya kemasan Dus (`DUS2`)**.
+2. **Kesesuaian dengan File Excel**:
+   - **Sheet `SKU MASTER` (Baris 85)**: `SRB` tercatat menggunakan kemasan `DUS: DUS2` (Dus ukuran 6 x 6 x 17).
+   - **Sheet `COGS RAW` (Baris 85)**: Menghitung HPP bahan mentah saja -> `0`.
+   - **Sheet `COGS MARKETPLACE` (Baris 25)**: Menghitung HPP siap jual marketplace = `Bahan: 0` + `DUS2: 425,38` = **Rp 425,38**.
+   - **Sheet `SHOPEE` & `TOKOPEDIA`**: Seluruh transaksi penjualan `SRB` (19 transaksi di Shopee) menggunakan HPP **Rp 425,38** untuk menghitung laba bersih.
+   - **Database Sistem Taetaa**: Pada tabel `Sale`, seluruh 19 transaksi penjualan `SRB` telah tercatat dengan HPP Rp 425,38 dan laba Rp 12.024,62 (cocok 100% dengan sheet `SHOPEE`). Relasi komponen `DUS2` juga sudah tersimpan di tabel `BOMComponent`.
+3. **Inkonsistensi Tampilan UI yang Teridentifikasi**:
+   - Item `PRODUCT` dan `PACKAGE` menampilkan kalkulasi total HPP resep dan tombol `Lihat BOM`.
+   - Namun untuk item `RAW` yang memiliki kemasan (seperti `SRB`, `SRK`, `SST`, `SSF`, `SPR`), tabel Master SKU sebelumnya memfilter `if (sku.type === 'RAW')` sehingga menyembunyikan tombol BOM dan hanya menampilkan HPP bahan mentah polos.
+
+### 🛠️ Solusi Implementasi Sistem
+1. **Pembaruan Kalkulasi Backend ([app/api/skus/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/skus/route.ts) & [app/api/skus/[id]/route.ts](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/api/skus/%5Bid%5D/route.ts))**:
+   - Untuk SKU tipe `RAW` yang memiliki komponen BOM kemasan, `estimatedBomHpp` dihitung secara utuh:
+     $$\text{Estimated BOM HPP} = \text{avgCost (Bahan Utama)} + \text{packagingCost (Kemasan \& Dus)}$$
+2. **Tampilan Master SKU ([app/master-sku/page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/master-sku/page.tsx))**:
+   - Item RAW yang memiliki komponen BOM (seperti `SRB`) kini menampilkan tombol HPP interaktif lengkap dengan icon "ℹ️" dan nilai total HPP siap jual (**Rp 425**).
+   - Tooltip menampilkan breakdown transparan: `Bahan: Rp 0 + Kemasan & Safety: Rp 425 - Klik untuk rincian kalkulasi detail`.
+   - Kolom `BOM` menampilkan tombol **"Lihat BOM"** aktif untuk semua SKU yang memiliki resep, tanpa terkecuali.
+   - Item RAW murni tanpa kemasan (seperti `SDT`) tetap menampilkan HPP pembeliannya (Rp 1.390,35) dengan indikator `cursor-help`.
+3. **Modal Ledger Rincian BOM ([BOMDetailModal.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/modals/BOMDetailModal.tsx))**:
+   - Saat modal BOM dibuka untuk item RAW seperti `SRB`, modal menampilkan struktur lengkap:
+     - **Bahan Baku / Produk Utama**: `SRB` (1 unit @ Rp 0)
+     - **Kemasan & Safety**: `DUS2` (1 pcs @ Rp 425,38)
+     - **Total HPP per Unit**: Rp 425,38.
 
 ---
 

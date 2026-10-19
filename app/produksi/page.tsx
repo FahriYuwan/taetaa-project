@@ -188,7 +188,7 @@ export default function ProduksiPage() {
                     <td className="px-6 py-4 font-bold">{p.output.sku.code}</td>
                     <td className="px-6 py-4">{p.output.sku.name}</td>
                     <td className="px-6 py-4 text-center font-medium">{p.outputQty.toLocaleString('id-ID')}</td>
-                    <td className="px-6 py-4 text-gray-400 text-xs italic">{p.notes || '—'}</td>
+                    <td className="px-6 py-4 text-gray-400 text-xs italic">{p.notes || '-'}</td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <Button

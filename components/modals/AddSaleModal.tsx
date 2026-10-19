@@ -58,7 +58,7 @@ export function AddSaleModal({
 
   async function fetchSkus() {
     try {
-      const res = await fetch('/api/skus?type=PACKAGE');
+      const res = await fetch('/api/skus');
       if (res.ok) {
         const data = await res.json();
         setSkus(data);
@@ -194,7 +194,7 @@ export function AddSaleModal({
             {/* SKU */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
-                Pilih Produk (PACKAGE)
+                Pilih Produk / SKU
               </label>
               <select
                 value={formData.skuId}
@@ -206,7 +206,7 @@ export function AddSaleModal({
                 <option value="">Pilih SKU...</option>
                 {skus.map((sku) => (
                   <option key={sku.id} value={sku.id}>
-                    {sku.code} - {sku.name}
+                    [{sku.type}] {sku.code} - {sku.name}
                   </option>
                 ))}
               </select>
@@ -243,7 +243,7 @@ export function AddSaleModal({
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
-                  Harga Jual
+                  Harga Jual Satuan
                 </label>
                 <NumberInput
                   value={formData.unitPrice}
@@ -255,6 +255,11 @@ export function AddSaleModal({
                   placeholder="0"
                   showPreview
                 />
+                <p className="mt-1 text-[10px] text-gray-500">
+                  {selectedSku?.sellingPrice
+                    ? 'Terisi otomatis dari rekomendasi harga owner (dapat diubah jika ada harga khusus/custom).'
+                    : 'Harga jual satuan aktual per unit untuk transaksi ini (bisa custom).'}
+                </p>
               </div>
             </div>
           </div>

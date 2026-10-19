@@ -25,12 +25,14 @@ const typeColors: Record<string, string> = {
   RAW: '#4FC3F7',
   PRODUCT: '#F97316',
   PACKAGE: '#1E88E5',
+  KEMASAN: '#10B981',
 };
 
 const typeLabels: Record<string, string> = {
   RAW: 'Raw',
   PRODUCT: 'Product',
   PACKAGE: 'Package',
+  KEMASAN: 'Kemasan',
 };
 
 export function RestockAlertModal({ isOpen, onClose, alerts }: RestockAlertModalProps) {

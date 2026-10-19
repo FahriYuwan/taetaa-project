@@ -58,3 +58,24 @@ _Avoid_: Total liter, volume stok, isi cairan.
 **Ukuran Kemasan SKU (Product Size / Pack Size)**:
 Kapasitas atau isi volume tetap per 1 unit kemasan produk (dinyatakan dalam ml). Nilai ini melekat pada definisi Master SKU dan digunakan sebagai faktor pembagi rasio BOM saat proses produksi. Jika barang yang sama dibeli dalam kapasitas berbeda (misal 20 Liter vs 5 Liter), keduanya merupakan dua SKU yang berbeda dengan ukuran masing-masing.
 _Avoid_: Kuantitas persediaan, berat paket.
+
+**Bill of Materials (BOM / Resep Produk)**:
+Daftar terstruktur bahan baku dan bahan pendukung yang dibutuhkan untuk menghasilkan satu unit produk jadi (`PRODUCT` atau `PACKAGE`). BOM terdiri dari 5 kategori komponen: RAW, PACKING, STIKER, SAFETY, dan DUS.
+_Avoid_: Formula, komposisi resep, daftar bahan polos.
+
+**Komponen Kemasan & Safety**:
+Bahan pendukung produksi non-cairan (botol, tutup segel, stiker, kardus, plastik wrap, sealtape) yang dikelola pada Master Kemasan. Komponen ini memiliki 2 jenis mekanisme konsumsi:
+- **Konsumsi Otomatis (1:1)**: Terpotong otomatis 1 pcs per 1 unit output (contoh: PACKING, STIKER, DUS, dan segel tutup botol `TBTL`).
+- **Konsumsi Manual**: Dikonfirmasi pengguna lewat ceklis saat sesi produksi karena 1 unit fisik dapat mencakup banyak produk sebelum habis (khusus `SLTP` sealtape dan `PLWR` plastik wrap).
+_Avoid_: Bahan baku pendukung, packaging murni, aksesoris.
+
+**Klasifikasi Tipe SKU**:
+Pemisahan peran operasional SKU dalam rantai pasok:
+- **RAW**: Bahan mentah curah hasil pembelian supplier tanpa proses perakitan lokal (tidak memiliki BOM).
+- **PRODUCT**: Barang setengah jadi/cairan yang telah dikemas ke wadah tertentu dengan resep BOM (sebelumnya diistilahkan WIP).
+- **PACKAGE**: Produk jadi siap jual di marketplace hasil perakitan komponen atau paket bundling lengkap (memiliki BOM dan rekomendasi harga jual).
+_Avoid_: Kategori barang, jenis inventaris.
+
+**Rekomendasi Harga (Recommended Price)**:
+Harga patokan acuan produk yang ditentukan oleh owner pada Master SKU. Berfungsi sebagai nilai bawaan (default) saat membuat transaksi penjualan, namun dapat disesuaikan (custom price) per transaksi sesuai kesepakatan atau promo.
+_Avoid_: Harga mati, harga mutlak, fixed selling price.

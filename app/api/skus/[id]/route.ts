@@ -26,15 +26,64 @@ export async function GET(
       );
     }
 
-    // Fetch current stock and avg cost
-    const costHistory = await prisma.sKUCostHistory.findUnique({
-      where: { skuId: id }
-    });
+    // Fetch current stock, avg cost, and child SKU cost histories
+    const costHistories = await prisma.sKUCostHistory.findMany();
+    const costMap = new Map(costHistories.map(ch => [ch.skuId, ch]));
+
+    const costHistory = costMap.get(id);
+
+    const enrichedBom = sku.bomComponents?.map(comp => {
+      let unitCost = 0;
+      let childName = '';
+      let childCode = '';
+      let childProductSize = 0;
+
+      if (comp.category === 'RAW' && comp.childSku) {
+        const childCh = costMap.get(comp.childSkuId!);
+        unitCost = childCh?.avgCost ?? comp.childSku.hppPrice ?? 0;
+        childName = comp.childSku.name;
+        childCode = comp.childSku.code;
+        childProductSize = comp.childSku.productSize || 0;
+      } else if (comp.childKemasan) {
+        unitCost = comp.childKemasan.avgCost ?? 0;
+        childName = comp.childKemasan.name;
+        childCode = comp.childKemasan.code;
+      }
+
+      const totalCost = comp.quantity * unitCost;
+
+      return {
+        ...comp,
+        unitCost,
+        totalCost,
+        childName,
+        childCode,
+        childProductSize,
+      };
+    }) || [];
+
+    const effectiveAvgCost = costHistory?.avgCost || sku.hppPrice || 0;
+    const rawCost = sku.type === 'RAW'
+      ? effectiveAvgCost
+      : enrichedBom
+          .filter(c => c.category === 'RAW')
+          .reduce((sum, c) => sum + c.totalCost, 0);
+
+    const packagingCost = enrichedBom
+      .filter(c => c.category !== 'RAW')
+      .reduce((sum, c) => sum + c.totalCost, 0);
+
+    const estimatedBomHpp = rawCost + packagingCost;
 
     return NextResponse.json({
       ...sku,
+      unit: sku.unit || 'ml',
       stock: costHistory?.stock || 0,
-      avgCost: costHistory?.avgCost || 0
+      avgCost: costHistory?.avgCost || sku.hppPrice || 0,
+      rawCost,
+      packagingCost,
+      estimatedBomHpp,
+      bomComponents: enrichedBom,
     });
   } catch (error) {
     return NextResponse.json(
@@ -82,8 +131,9 @@ export async function PUT(
           name,
           type,
           productSize: productSize || 0,
+          ...(body.unit !== undefined ? { unit: body.unit } : {}),
           hppPrice: hppPrice || 0,
-          sellingPrice: type === 'PACKAGE' ? sellingPrice : null,
+          sellingPrice: sellingPrice !== undefined && sellingPrice !== null && sellingPrice !== '' ? parseFloat(sellingPrice) : null,
           ...(normalizedStockMin !== undefined ? { stockMin: normalizedStockMin } : {}),
         },
       });

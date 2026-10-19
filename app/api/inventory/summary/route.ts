@@ -17,7 +17,15 @@ export async function GET(req: Request) {
     to.setHours(23, 59, 59, 999);
 
     // 1. Batch fetch all required data in parallel — eliminates N+1 queries completely
-    const [skus, costHistories, allBomComponents, productionOutputs] = await Promise.all([
+    const [
+      skus,
+      costHistories,
+      allBomComponents,
+      productionOutputs,
+      kemasanItems,
+      kemasanPurchases,
+      kemasanProductionInputs,
+    ] = await Promise.all([
       prisma.sKU.findMany({
         include: {
           inventory: {
@@ -58,6 +66,36 @@ export async function GET(req: Request) {
           },
         },
       }),
+      prisma.masterItemKemasan.findMany({
+        orderBy: { code: 'asc' },
+      }),
+      prisma.purchase.findMany({
+        where: {
+          kemasanId: { not: null },
+          date: { lte: to },
+        },
+        select: {
+          kemasanId: true,
+          qty: true,
+          date: true,
+        },
+      }),
+      prisma.productionKemasanInput.findMany({
+        where: {
+          production: {
+            date: { lte: to },
+          },
+        },
+        select: {
+          kemasanId: true,
+          qtyUsed: true,
+          production: {
+            select: {
+              date: true,
+            },
+          },
+        },
+      }),
     ]);
 
     const costMap = new Map(costHistories.map((ch) => [ch.skuId, ch]));
@@ -79,7 +117,7 @@ export async function GET(req: Request) {
     }
 
     // 2. Aggregate movements per SKU purely in memory
-    const result = skus.map((sku) => {
+    const skuResult = skus.map((sku) => {
       let stockAwal = 0;
       let masukBeli = 0;
       let masukProduksi = 0;
@@ -139,7 +177,7 @@ export async function GET(req: Request) {
         id: sku.id,
         code: sku.code,
         name: sku.name,
-        type: sku.type,
+        type: sku.type as any,
         stockAwal,
         masukBeli,
         masukProduksi,
@@ -155,15 +193,79 @@ export async function GET(req: Request) {
       };
     });
 
-    // 3. Calculate KPIs
+    // 3. Aggregate movements per MasterItemKemasan
+    const kemasanPurchasesMap = new Map<string, Array<{ qty: number; date: Date }>>();
+    for (const p of kemasanPurchases) {
+      if (!p.kemasanId) continue;
+      const list = kemasanPurchasesMap.get(p.kemasanId) || [];
+      list.push({ qty: p.qty, date: p.date });
+      kemasanPurchasesMap.set(p.kemasanId, list);
+    }
+
+    const kemasanProductionMap = new Map<string, Array<{ qtyUsed: number; date: Date }>>();
+    for (const pki of kemasanProductionInputs) {
+      if (!pki.kemasanId || !pki.production?.date) continue;
+      const list = kemasanProductionMap.get(pki.kemasanId) || [];
+      list.push({ qtyUsed: pki.qtyUsed, date: pki.production.date });
+      kemasanProductionMap.set(pki.kemasanId, list);
+    }
+
+    const kemasanResult = kemasanItems.map((k) => {
+      const purchases = kemasanPurchasesMap.get(k.id) || [];
+      const prodInputs = kemasanProductionMap.get(k.id) || [];
+
+      let masukBeli = 0;
+      purchases.forEach((p) => {
+        const d = new Date(p.date);
+        if (d >= from && d <= to) {
+          masukBeli += p.qty;
+        }
+      });
+
+      let keluarProduksi = 0;
+      prodInputs.forEach((pi) => {
+        const d = new Date(pi.date);
+        if (d >= from && d <= to) {
+          keluarProduksi += pi.qtyUsed;
+        }
+      });
+
+      const stockAkhir = k.stock;
+      const stockAwal = Math.max(0, stockAkhir - masukBeli + keluarProduksi);
+      const nilaiStock = stockAkhir * k.avgCost;
+
+      return {
+        id: k.id,
+        code: k.code,
+        name: k.name,
+        type: 'KEMASAN' as const,
+        stockAwal,
+        masukBeli,
+        masukProduksi: 0,
+        keluarProduksi,
+        keluarJual: 0,
+        keluarBreakage: 0,
+        keluarAffiliate: 0,
+        stockAkhir,
+        stockMin: k.stockMin ?? 0,
+        avgCost: k.avgCost,
+        nilaiStock,
+        rawBreakdown: null,
+      };
+    });
+
+    const combinedResult = [...skuResult, ...kemasanResult];
+
+    // 4. Calculate KPIs
     const kpi = {
       totalValue: 0,
       raw: { value: 0, count: 0 },
       product: { value: 0, count: 0 },
       package: { value: 0, count: 0 },
+      kemasan: { value: 0, count: 0 },
     };
 
-    result.forEach((item) => {
+    combinedResult.forEach((item) => {
       kpi.totalValue += item.nilaiStock;
       if (item.type === SKUType.RAW) {
         kpi.raw.value += item.nilaiStock;
@@ -174,10 +276,13 @@ export async function GET(req: Request) {
       } else if (item.type === SKUType.PACKAGE) {
         kpi.package.value += item.nilaiStock;
         kpi.package.count++;
+      } else if (item.type === 'KEMASAN') {
+        kpi.kemasan.value += item.nilaiStock;
+        kpi.kemasan.count++;
       }
     });
 
-    return NextResponse.json({ kpi, items: result });
+    return NextResponse.json({ kpi, items: combinedResult });
   } catch (error) {
     console.error('Inventory dashboard error:', error);
     return NextResponse.json({ error: 'Failed to fetch inventory summary' }, { status: 500 });

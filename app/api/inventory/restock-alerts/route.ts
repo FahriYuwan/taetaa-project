@@ -46,6 +46,26 @@ export async function GET() {
       }
     }
 
+    // Fetch MasterItemKemasan that have a stockMin set
+    const kemasans = await prisma.masterItemKemasan.findMany();
+
+    for (const kemasan of kemasans) {
+      const stockMin = (kemasan as any).stockMin ?? 0;
+      if (stockMin <= 0) continue;
+
+      if (kemasan.stock < stockMin) {
+        alerts.push({
+          id: kemasan.id,
+          code: kemasan.code,
+          name: kemasan.name,
+          type: 'KEMASAN',
+          stockAkhir: kemasan.stock,
+          stockMin,
+          deficit: stockMin - kemasan.stock,
+        });
+      }
+    }
+
     // Sort by most critical first (lowest stock ratio = most urgent)
     alerts.sort((a, b) => {
       const ratioA = a.stockAkhir / a.stockMin;

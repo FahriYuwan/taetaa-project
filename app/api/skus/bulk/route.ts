@@ -49,7 +49,7 @@ export async function POST(req: Request) {
         }
         if (parts[5]) {
           const parsedSell = parseRupiahNumber(parts[5]);
-          sellingPrice = type === 'PACKAGE' ? parsedSell : null;
+          sellingPrice = parsedSell > 0 ? parsedSell : null;
         }
         if (parts[6] !== undefined && parts[6] !== '') {
           const parsedStockMin = parseFloat(parts[6].replace(/[^0-9.]/g, ''));
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
         }
         if (parts[4]) {
           const parsedSell = parseRupiahNumber(parts[4]);
-          sellingPrice = type === 'PACKAGE' ? parsedSell : null;
+          sellingPrice = parsedSell > 0 ? parsedSell : null;
         }
         if (parts[5] !== undefined && parts[5] !== '') {
           const parsedStockMin = parseFloat(parts[5].replace(/[^0-9.]/g, ''));
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
         }
         if (parts[4]) {
           const parsedSell = parseRupiahNumber(parts[4]);
-          sellingPrice = type === 'PACKAGE' ? parsedSell : null;
+          sellingPrice = parsedSell > 0 ? parsedSell : null;
         }
       } else if (parts.length === 4) {
         // Toleransi 4 kolom: KODE [TAB] NAMA [TAB] TIPE [TAB] UKURAN_ML
@@ -91,11 +91,16 @@ export async function POST(req: Request) {
         }
       }
 
+      const isPcs =
+        (parts[3] && parts[3].toLowerCase().includes('pcs')) ||
+        (productSize > 0 && productSize <= 10 && !parts[3]?.toLowerCase().includes('ml') && !parts[3]?.toLowerCase().includes('l'));
+
       skusToCreate.push({
         code,
         name,
         type,
         productSize,
+        unit: isPcs ? 'pcs' : 'ml',
         hppPrice,
         sellingPrice,
         stockMin,

@@ -8,7 +8,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { code, name, category, stock, avgCost } = body;
+    const { code, name, category, stock, avgCost, stockMin, isPeriodic, lastOpname } = body;
 
     const item = await prisma.masterItemKemasan.update({
       where: { id },
@@ -16,8 +16,11 @@ export async function PUT(
         code,
         name,
         category,
-        stock,
-        avgCost,
+        ...(stock !== undefined ? { stock: parseFloat(stock) || 0 } : {}),
+        ...(avgCost !== undefined ? { avgCost: parseFloat(avgCost) || 0 } : {}),
+        ...(stockMin !== undefined ? { stockMin: stockMin !== null && stockMin !== '' ? parseFloat(stockMin) : 0 } : {}),
+        ...(isPeriodic !== undefined ? { isPeriodic: Boolean(isPeriodic) } : {}),
+        ...(lastOpname !== undefined ? { lastOpname: lastOpname ? new Date(lastOpname) : null } : {}),
       },
     });
 

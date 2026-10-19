@@ -18,6 +18,7 @@ interface SKUFormData {
   name: string;
   type: 'RAW' | 'PRODUCT' | 'PACKAGE';
   productSize: number;
+  unit?: 'ml' | 'pcs';
   hppPrice: number;
   sellingPrice?: number;
   stockMin?: number | null;
@@ -63,6 +64,7 @@ export function AddEditSKUModal({
           name: initialData.name || '',
           type: initialData.type || 'RAW',
           productSize: initialData.productSize || 0,
+          unit: initialData.unit || 'ml',
           hppPrice: initialData.avgCost ?? initialData.hppPrice ?? 0,
           sellingPrice: initialData.sellingPrice,
           stockMin: initialData.stockMin !== undefined ? initialData.stockMin : 0,
@@ -80,6 +82,7 @@ export function AddEditSKUModal({
           name: '',
           type: 'RAW',
           productSize: 0,
+          unit: 'ml',
           hppPrice: 0,
           sellingPrice: undefined,
           stockMin: 0,
@@ -248,24 +251,55 @@ export function AddEditSKUModal({
                   <option value="PACKAGE">PACKAGE (Produk Jadi Siap Jual)</option>
                 </select>
                 <p className="text-[11px] text-gray-500 mt-1">
-                  *Hanya tipe <span className="font-semibold text-gray-700">PACKAGE</span> yang dapat dijual di transaksi Penjualan.
+                  Semua tipe (PACKAGE, RAW, PRODUCT) dapat dijual langsung pada transaksi Penjualan &amp; Bulk Paste.
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
-                  Product Size (Kapasitas Isi)
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider" style={{ color: colors.neutral.textMuted }}>
+                    {formData.unit === 'pcs' ? 'Kuantitas / Jumlah Satuan' : 'Product Size (Kapasitas Isi)'}
+                  </label>
+                  <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded text-[11px] font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, unit: 'ml' })}
+                      className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                        (formData.unit || 'ml') === 'ml'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      ml (Volume)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, unit: 'pcs' })}
+                      className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                        formData.unit === 'pcs'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      pcs (Kuantitas)
+                    </button>
+                  </div>
+                </div>
                 <NumberInput
                   value={formData.productSize}
                   onChange={(val) => setFormData({ ...formData, productSize: val })}
-                  suffix="ml"
+                  suffix={formData.unit === 'pcs' ? 'pcs' : 'ml'}
                   className="border focus:ring-2 bg-white"
                   style={{ borderColor: colors.neutral.border } as any}
                   disabled={isLoading}
                   placeholder="0"
                   showPreview
                 />
+                <p className="text-[11px] text-gray-500 mt-1">
+                  {formData.unit === 'pcs'
+                    ? 'Gunakan pcs jika produk berbentuk fisik satuan/alat (contoh: 1 pcs sikat, 2 pcs bundling sikat & eraser).'
+                    : 'Gunakan ml jika produk berupa cairan dalam botol/jerigen (contoh: 100 ml, 500 ml, 20.000 ml untuk 20L).'}
+                </p>
               </div>
 
               <div className="p-3 rounded-lg bg-gray-50 border border-gray-200">
@@ -283,23 +317,26 @@ export function AddEditSKUModal({
                 </p>
               </div>
 
-              {formData.type === 'PACKAGE' && (
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
-                    Harga Jual (Khusus PACKAGE)
-                  </label>
-                  <NumberInput
-                    value={formData.sellingPrice}
-                    onChange={(val) => setFormData({ ...formData, sellingPrice: val || undefined })}
-                    prefix="Rp "
-                    className="border focus:ring-2 bg-white"
-                    style={{ borderColor: colors.neutral.border } as any}
-                    disabled={isLoading}
-                    placeholder="0"
-                    showPreview
-                  />
-                </div>
-              )}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>
+                  Rekomendasi Harga Jual {formData.type !== 'PACKAGE' && <span className="text-[10px] lowercase font-normal text-gray-400">(opsional)</span>}
+                </label>
+                <NumberInput
+                  value={formData.sellingPrice}
+                  onChange={(val) => setFormData({ ...formData, sellingPrice: val || undefined })}
+                  prefix="Rp "
+                  className="border focus:ring-2 bg-white"
+                  style={{ borderColor: colors.neutral.border } as any}
+                  disabled={isLoading}
+                  placeholder="0"
+                  showPreview
+                />
+                <p className="mt-1 text-[11px] text-gray-500 leading-tight">
+                  {formData.type === 'PACKAGE'
+                    ? 'Rekomendasi harga patokan yang diinputkan oleh owner. Otomatis mengisi harga satuan saat input transaksi penjualan.'
+                    : 'Opsional. Rekomendasi harga patokan dari owner jika bahan baku / produk olahan ini dijual langsung ke pembeli.'}
+                </p>
+              </div>
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: colors.neutral.textMuted }}>

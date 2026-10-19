@@ -58,15 +58,16 @@ export function Button({
 }
 
 interface BadgeProps {
-  type: 'RAW' | 'PRODUCT' | 'PACKAGE';
+  type: 'RAW' | 'PRODUCT' | 'PACKAGE' | 'KEMASAN' | string;
   children: React.ReactNode;
 }
 
 export function Badge({ type, children }: BadgeProps) {
+  const bg = skuTypeColors[type as keyof typeof skuTypeColors] || colors.brand[500];
   return (
     <span 
       className="px-2.5 py-1 rounded text-xs font-medium text-white"
-      style={{ backgroundColor: skuTypeColors[type] }}
+      style={{ backgroundColor: bg }}
     >
       {children}
     </span>

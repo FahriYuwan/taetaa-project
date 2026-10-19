@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/header/PageHeader';
 import { Button, Badge } from '@/components/ui/Button';
 import { AddEditSKUModal } from '@/components/modals/AddEditSKUModal';
 import { ConfirmDialog } from '@/components/modals/ConfirmDialog';
+import { BOMDetailModal } from '@/components/modals/BOMDetailModal';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
 
@@ -14,11 +15,15 @@ interface SKU {
   name: string;
   type: 'RAW' | 'PRODUCT' | 'PACKAGE';
   productSize?: number;
+  unit?: string;
   hppPrice?: number;
   avgCost?: number;
   sellingPrice?: number;
   stock?: number;
   stockMin?: number | null;
+  rawCost?: number;
+  packagingCost?: number;
+  estimatedBomHpp?: number;
   bomComponents?: any[];
 }
 
@@ -216,10 +221,10 @@ export default function MasterSKUPage() {
                     <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>SKU CODE</th>
                     <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>NAMA</th>
                     <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>TIPE</th>
-                    <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>UKURAN</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>UKURAN / KUANTITAS</th>
                     <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>STOK MIN</th>
                     <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>HARGA HPP</th>
-                    <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>HARGA JUAL</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide cursor-help" style={{ color: colors.neutral.textMuted }} title="Rekomendasi harga patokan yang diinputkan oleh owner">REKOMENDASI HARGA</th>
                     <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>BOM</th>
                     <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wide" style={{ color: colors.neutral.textMuted }}>AKSI</th>
                   </tr>
@@ -238,29 +243,83 @@ export default function MasterSKUPage() {
                         <td className="px-6 py-4 text-right text-sm" style={{ color: colors.neutral.textStrong }}>
                           {sku.productSize && sku.productSize > 0 ? (
                             <span>
-                              {sku.productSize >= 1000
+                              {sku.unit === 'pcs'
+                                ? `${sku.productSize.toLocaleString('id-ID')} pcs`
+                                : sku.productSize >= 1000
                                 ? `${(sku.productSize / 1000).toLocaleString('id-ID', { maximumFractionDigits: 2 })} L`
                                 : `${sku.productSize.toLocaleString('id-ID')} ml`}
                             </span>
                           ) : (
-                            <span className="text-gray-300">—</span>
+                            <span className="text-gray-300">-</span>
                           )}
                         </td>
                         <td className="px-6 py-4 text-right text-sm font-medium" style={{ color: colors.neutral.textMuted }}>
-                          {stockMin > 0 ? stockMin.toLocaleString('id-ID') : '—'}
+                          {stockMin > 0 ? stockMin.toLocaleString('id-ID') : '-'}
                         </td>
-                        <td className="px-6 py-4 text-right text-sm font-medium" style={{ color: colors.neutral.textStrong }}>
+                        <td className="px-6 py-4 text-right text-sm font-medium">
                           {(() => {
+                            const hasBom = !!(sku.bomComponents && sku.bomComponents.length > 0);
                             const effectiveHpp = sku.avgCost ?? sku.hppPrice ?? 0;
-                            if (!effectiveHpp || effectiveHpp <= 0) return 'Rp 0';
-                            return `Rp ${effectiveHpp % 1 === 0 ? effectiveHpp.toLocaleString('id-ID') : effectiveHpp.toLocaleString('id-ID', { maximumFractionDigits: 2 })}`;
+
+                            if (sku.type === 'RAW' && !hasBom) {
+                              const formattedHpp =
+                                !effectiveHpp || effectiveHpp <= 0
+                                  ? 'Rp 0'
+                                  : `Rp ${
+                                      effectiveHpp % 1 === 0
+                                        ? effectiveHpp.toLocaleString('id-ID')
+                                        : effectiveHpp.toLocaleString('id-ID', { maximumFractionDigits: 2 })
+                                    }`;
+                              return (
+                                <span
+                                  className="text-gray-700 cursor-help"
+                                  title={
+                                    effectiveHpp > 0
+                                      ? "HPP dinamis dari histori pembelian supplier (Weighted Average)"
+                                      : "Belum ada histori pembelian supplier (Rp 0)"
+                                  }
+                                >
+                                  {formattedHpp}
+                                </span>
+                              );
+                            }
+
+                            const rawPart = (sku.type === 'RAW' ? effectiveHpp : (sku.rawCost ?? 0));
+                            const packagingPart = sku.packagingCost ?? 0;
+                            const totalDisplayHpp = sku.type === 'RAW' ? (rawPart + packagingPart) : (sku.estimatedBomHpp || effectiveHpp);
+                            const formattedDisplayHpp =
+                              !totalDisplayHpp || totalDisplayHpp <= 0
+                                ? 'Rp 0'
+                                : `Rp ${
+                                    totalDisplayHpp % 1 === 0
+                                      ? totalDisplayHpp.toLocaleString('id-ID')
+                                      : totalDisplayHpp.toLocaleString('id-ID', { maximumFractionDigits: 2 })
+                                  }`;
+
+                            const rawTooltip = rawPart > 0 ? `Bahan: Rp ${Math.round(rawPart).toLocaleString('id-ID')}` : 'Bahan: Rp 0';
+                            const packTooltip = packagingPart > 0 ? `Kemasan & Safety: Rp ${Math.round(packagingPart).toLocaleString('id-ID')}` : '';
+                            const fullTooltip = [rawTooltip, packTooltip].filter(Boolean).join(' + ') || 'BOM Resep';
+
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => setViewingSku(sku)}
+                                className="group inline-flex items-center gap-1.5 font-bold text-blue-700 hover:text-blue-900 cursor-pointer text-right transition-colors"
+                                title={`${fullTooltip} - Klik untuk rincian kalkulasi detail`}
+                              >
+                                <span>{formattedDisplayHpp}</span>
+                                <span className="text-[11px] opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all text-blue-600">
+                                  ℹ️
+                                </span>
+                              </button>
+                            );
                           })()}
                         </td>
                         <td className="px-6 py-4 text-right text-sm" style={{ color: colors.neutral.textStrong }}>
-                          {sku.type === 'PACKAGE' && sku.sellingPrice ? `Rp ${sku.sellingPrice.toLocaleString('id-ID')}` : '—'}
+                          {sku.sellingPrice ? `Rp ${sku.sellingPrice.toLocaleString('id-ID')}` : '-'}
                         </td>
                         <td className="px-6 py-4 text-center">
-                          {(sku.type === 'PRODUCT' || sku.type === 'PACKAGE') ? (
+                          {(sku.bomComponents && sku.bomComponents.length > 0) ? (
                             <div className="flex items-center justify-center">
                               <Button
                                 variant="secondary"
@@ -271,7 +330,7 @@ export default function MasterSKUPage() {
                               </Button>
                             </div>
                           ) : (
-                            <span className="text-gray-300">—</span>
+                            <span className="text-gray-300">-</span>
                           )}
                         </td>
                         <td className="px-6 py-4 text-center">
@@ -323,7 +382,7 @@ export default function MasterSKUPage() {
         onCancel={() => setDeletingSkuId(null)}
       />
 
-      <BOMViewModal
+      <BOMDetailModal
         isOpen={!!viewingSku}
         sku={viewingSku}
         onClose={() => setViewingSku(null)}
@@ -390,12 +449,12 @@ SBN2-PCF\tSabun Kopi 500ml\tPACKAGE\t500\t15000\t50`;
             <span>📋 Format Kolom dari Excel / Spreadsheet (Tab-Separated):</span>
           </div>
           <div className="bg-white/80 p-2 rounded border border-blue-100 font-mono text-[11px] overflow-x-auto text-blue-950 font-semibold">
-            KODE [TAB] NAMA [TAB] TIPE [TAB] UKURAN_ML [TAB] HARGA_JUAL [TAB] STOK_MIN
+            KODE [TAB] NAMA [TAB] TIPE [TAB] UKURAN_ATAU_KUANTITAS [TAB] HARGA_JUAL [TAB] STOK_MIN
           </div>
           <div className="text-[11px] text-blue-700 leading-relaxed grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 pt-1">
             <p>• <strong>Wajib:</strong> KODE, NAMA, TIPE (<code>RAW</code>, <code>PRODUCT</code>, <code>PACKAGE</code>)</p>
-            <p>• <strong>UKURAN_ML:</strong> Ukuran kemasan dlm ml (misal <code>20000</code> untuk 20L, <code>500</code> untuk 500ml) <span className="text-blue-500 italic">(opsional, default 0)</span></p>
-            <p>• <strong>HARGA JUAL:</strong> Khusus PACKAGE, kosongkan untuk RAW/PRODUCT <span className="text-blue-500 italic">(opsional)</span></p>
+            <p>• <strong>UKURAN / KUANTITAS:</strong> Ukuran volume cairan dlm ml (misal <code>500</code> untuk 500ml) atau jumlah item dlm pcs (misal <code>1</code> untuk sikat, <code>2</code> untuk bundling) <span className="text-blue-500 italic">(opsional, default 0)</span></p>
+            <p>• <strong>HARGA JUAL:</strong> Rekomendasi harga jual untuk PACKAGE, kosongkan untuk RAW/PRODUCT <span className="text-blue-500 italic">(opsional)</span></p>
             <p>• <strong>STOK MIN:</strong> Batas minimum peringatan stok <span className="text-blue-500 italic">(opsional, default 0)</span></p>
             <div className="sm:col-span-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded p-2 text-[11px] mt-1">
               💡 <strong>HPP (Biaya Modal) Tidak Perlu Diinput:</strong> HPP dihitung otomatis oleh sistem secara dinamis berdasarkan data mutasi pembelian riil (Weighted Average Cost / COGS RAW) dan resep BOM produksi (COGS WIP/Marketplace).
@@ -427,93 +486,6 @@ SBN2-PCF\tSabun Kopi 500ml\tPACKAGE\t500\t15000\t50`;
           <Button variant="primary" onClick={handleImport} disabled={loading}>
             {loading ? 'Mengimpor...' : 'Impor Sekarang'}
           </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function BOMViewModal({ isOpen, sku, onClose }: { isOpen: boolean, sku: SKU | null, onClose: () => void }) {
-  if (!isOpen || !sku) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto py-10">
-      <div className="bg-white rounded-lg p-6 max-w-2xl w-full shadow-xl mx-4">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h3 className="text-xl font-bold text-gray-900">BOM: {sku.code}</h3>
-            <p className="text-sm text-gray-500">{sku.name}</p>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">✕</button>
-        </div>
-
-        <div className="border rounded-lg overflow-hidden divide-y divide-gray-100">
-          {sku.bomComponents?.length === 0 ? (
-            <div className="p-8 text-center text-sm text-gray-400 italic">Tidak ada komponen resep</div>
-          ) : (
-            (['RAW', 'PACKING', 'STIKER', 'SAFETY', 'DUS'] as const).map(cat => {
-              const comps = sku.bomComponents?.filter((c: any) => c.category === cat);
-              if (!comps || comps.length === 0) return null;
-              
-              return (
-                <div key={cat} className="bg-white">
-                  <div className="bg-gray-50 px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] border-b">
-                    {cat}
-                  </div>
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-[10px] text-gray-400 uppercase font-bold">
-                        <th className="px-4 py-2">Kode</th>
-                        <th className="px-4 py-2">Nama</th>
-                        <th className="px-4 py-2 text-right">Qty/Unit</th>
-                        <th className="px-4 py-2 text-center">Tipe Konsumsi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {comps.map((comp: any) => {
-                        const item = comp.childSku || comp.childKemasan;
-                        return (
-                          <tr key={comp.id} className="hover:bg-gray-50/50">
-                            <td className="px-4 py-3 font-mono text-xs font-bold text-gray-700">{item?.code}</td>
-                            <td className="px-4 py-3 text-gray-600">{item?.name}</td>
-                            <td className="px-4 py-3 text-right font-bold">
-                              {cat === 'RAW' ? (
-                                <div>
-                                  <span>{comp.quantity} unit</span>
-                                  {item?.productSize ? (
-                                    <span className="block text-[10px] text-gray-500 font-normal">
-                                      (~{(comp.quantity * item.productSize >= 1000)
-                                        ? `${((comp.quantity * item.productSize) / 1000).toLocaleString('id-ID', { maximumFractionDigits: 2 })} L`
-                                        : `${Math.round(comp.quantity * item.productSize).toLocaleString('id-ID')} ml`})
-                                    </span>
-                                  ) : null}
-                                </div>
-                              ) : (
-                                <span>{comp.quantity} <span className="text-[10px] text-gray-400 font-medium uppercase">pcs</span></span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                                comp.consumptionType === 'MANUAL' 
-                                  ? 'bg-orange-100 text-orange-600' 
-                                  : 'bg-blue-100 text-blue-600'
-                              }`}>
-                                {comp.consumptionType || 'AUTOMATIC'}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })
-          )}
-        </div>
-        
-        <div className="mt-8 pt-6 border-t flex justify-end">
-          <Button variant="primary" onClick={onClose} style={{ minWidth: '120px' }}>Tutup</Button>
         </div>
       </div>
     </div>

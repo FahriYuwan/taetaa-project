@@ -25,4 +25,5 @@ export const skuTypeColors = {
   RAW: '#4FC3F7', // brand-400
   PRODUCT: '#F97316', // semantic.orange
   PACKAGE: '#1E88E5', // brand-500
+  KEMASAN: '#10B981', // semantic.green
 };

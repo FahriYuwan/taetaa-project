@@ -16,6 +16,7 @@ import {
   FiExternalLink,
 } from 'react-icons/fi';
 import { StatusDropdown } from '@/components/penjualan/StatusDropdown';
+import { BOMDetailModal } from '@/components/modals/BOMDetailModal';
 
 interface Sale {
   id: string;
@@ -98,6 +99,27 @@ export function SaleDetailDrawer({
   onDelete,
 }: SaleDetailDrawerProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [fullSku, setFullSku] = useState<any>(null);
+  const [showBomModal, setShowBomModal] = useState(false);
+  const [loadingBom, setLoadingBom] = useState(false);
+
+  async function handleOpenBom() {
+    const targetSkuId = sale?.sku?.id || sale?.skuId;
+    if (!targetSkuId) return;
+    setLoadingBom(true);
+    try {
+      const res = await fetch(`/api/skus/${targetSkuId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setFullSku(data);
+        setShowBomModal(true);
+      }
+    } catch (err) {
+      console.error('Failed to load SKU BOM:', err);
+    } finally {
+      setLoadingBom(false);
+    }
+  }
 
   // Close on Escape key
   useEffect(() => {
@@ -402,6 +424,16 @@ export function SaleDetailDrawer({
                   <span>Total Beban Modal (HPP):</span>
                   <span>- {formatRupiah(totalHppValue)}</span>
                 </div>
+                <div className="pt-1.5 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleOpenBom}
+                    disabled={loadingBom}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer disabled:opacity-50"
+                  >
+                    <span>{loadingBom ? 'Memuat BOM...' : '🔍 Validasi Rincian BOM Produk'}</span>
+                  </button>
+                </div>
               </div>
 
               {/* Net Profit Summary */}
@@ -474,6 +506,13 @@ export function SaleDetailDrawer({
           </div>
         </div>
       </aside>
+
+      {/* BOM Detail Modal */}
+      <BOMDetailModal
+        isOpen={showBomModal}
+        sku={fullSku}
+        onClose={() => setShowBomModal(false)}
+      />
     </div>
   );
 }

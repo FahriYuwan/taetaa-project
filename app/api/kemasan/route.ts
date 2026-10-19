@@ -21,7 +21,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { code, name, category, stock, avgCost } = body;
+    const { code, name, category, stock, avgCost, stockMin, isPeriodic, lastOpname } = body;
 
     const item = await prisma.masterItemKemasan.create({
       data: {
@@ -30,6 +30,9 @@ export async function POST(req: Request) {
         category,
         stock: stock || 0,
         avgCost: avgCost || 0,
+        stockMin: stockMin !== undefined && stockMin !== null && stockMin !== '' ? parseFloat(stockMin) : 0,
+        isPeriodic: isPeriodic !== undefined ? Boolean(isPeriodic) : false,
+        lastOpname: lastOpname ? new Date(lastOpname) : null,
       },
     });
 
