@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/modals/ConfirmDialog';
 import { BOMDetailModal } from '@/components/modals/BOMDetailModal';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
+import { Pagination } from '@/components/ui/Pagination';
 
 interface SKU {
   id: string;
@@ -31,6 +32,8 @@ export default function MasterSKUPage() {
   const [skus, setSkus] = useState<SKU[]>([]);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | 'all'>(50);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -131,6 +134,15 @@ export default function MasterSKUPage() {
     return matchesFilter && matchesSearch;
   });
 
+  // Reset page when filter or search changes
+  useEffect(() => {
+    setPage(1);
+  }, [filter, search]);
+
+  const paginatedSkus = pageSize === 'all'
+    ? filteredSkus
+    : filteredSkus.slice((page - 1) * pageSize, page * pageSize);
+
   const counts = {
     all: skus.length,
     RAW: skus.filter(s => s.type === 'RAW').length,
@@ -230,7 +242,7 @@ export default function MasterSKUPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredSkus.map((sku) => {
+                  {paginatedSkus.map((sku) => {
                     const stockMin = sku.stockMin ?? 0;
 
                     return (
@@ -357,6 +369,15 @@ export default function MasterSKUPage() {
                 </tbody>
               </table>
             )}
+
+            <Pagination
+              currentPage={page}
+              totalItems={filteredSkus.length}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              itemLabel="SKU"
+            />
           </div>
         </div>
 

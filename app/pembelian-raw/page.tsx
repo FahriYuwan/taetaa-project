@@ -8,6 +8,7 @@ import { BulkPurchaseModal } from '@/components/modals/BulkPurchaseModal';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
 import { DatePresetFilter } from '@/components/filters/DatePresetFilter';
+import { Pagination } from '@/components/ui/Pagination';
 
 function ClipboardIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
@@ -72,6 +73,8 @@ export default function PembelianRawPage() {
   const [subCategoryFilter, setSubCategoryFilter] = useState<KemasanSubCategory>('all');
   const [selectedSupplier, setSelectedSupplier] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortOption>('date-desc');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | 'all'>(50);
 
   // Date filters (default empty to show all historical data)
   const [toDate, setToDate] = useState('');
@@ -187,6 +190,17 @@ export default function PembelianRawPage() {
         }
       });
   }, [purchases, categoryFilter, subCategoryFilter, selectedSupplier, search, sortBy]);
+
+  // Reset page when any filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [categoryFilter, subCategoryFilter, selectedSupplier, search, fromDate, toDate, sortBy]);
+
+  const paginatedItems = useMemo(() => {
+    if (pageSize === 'all') return filteredItems;
+    const start = (page - 1) * pageSize;
+    return filteredItems.slice(start, start + pageSize);
+  }, [filteredItems, page, pageSize]);
 
   async function handleAddPurchase(formData: any) {
     try {
@@ -525,7 +539,7 @@ export default function PembelianRawPage() {
                   </td>
                 </tr>
               ) : (
-                filteredItems.map((p) => {
+                paginatedItems.map((p) => {
                   const isKemasan = !!p.kemasanId;
                   const itemCode = isKemasan ? p.kemasan?.code : p.sku?.code;
                   const itemName = isKemasan ? p.kemasan?.name : p.sku?.name;
@@ -568,6 +582,15 @@ export default function PembelianRawPage() {
               )}
             </tbody>
           </table>
+
+          <Pagination
+            currentPage={page}
+            totalItems={filteredItems.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            itemLabel="transaksi"
+          />
         </div>
       </div>
 

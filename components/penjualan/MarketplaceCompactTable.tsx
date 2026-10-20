@@ -18,12 +18,18 @@ import {
   FiAlertTriangle,
 } from 'react-icons/fi';
 import { StatusDropdown } from './StatusDropdown';
+import { Pagination } from '@/components/ui/Pagination';
 
 interface MarketplaceCompactTableProps {
   orderGroups: OrderGroup[];
+  totalOrderGroupsCount?: number;
   filteredSalesCount: number;
   loading: boolean;
   totals: MarketplaceTotals;
+  currentPage?: number;
+  pageSize?: number | 'all';
+  onPageChange?: (p: number) => void;
+  onPageSizeChange?: (s: number | 'all') => void;
   editingStatusId?: string | null;
   editingStatus?: string;
   isSavingStatus?: boolean;
@@ -38,9 +44,14 @@ interface MarketplaceCompactTableProps {
 
 export function MarketplaceCompactTable({
   orderGroups,
+  totalOrderGroupsCount,
   filteredSalesCount,
   loading,
   totals,
+  currentPage = 1,
+  pageSize = 50,
+  onPageChange,
+  onPageSizeChange,
   editingStatusId,
   editingStatus,
   isSavingStatus,
@@ -305,7 +316,7 @@ export function MarketplaceCompactTable({
             >
               <tr>
                 <td colSpan={3} className="px-4 py-3 text-gray-800 uppercase tracking-wider">
-                  TOTAL ({orderGroups.length} Resi · {filteredSalesCount} Item)
+                  TOTAL ({(totalOrderGroupsCount ?? orderGroups.length).toLocaleString('id-ID')} Resi · {filteredSalesCount.toLocaleString('id-ID')} Item)
                 </td>
                 <td className="px-4 py-3 text-right text-gray-900">
                   {totals.qty.toLocaleString('id-ID')}
@@ -329,6 +340,17 @@ export function MarketplaceCompactTable({
           )}
         </table>
       </div>
+
+      {onPageChange && onPageSizeChange && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalOrderGroupsCount ?? orderGroups.length}
+          pageSize={pageSize}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+          itemLabel="resi"
+        />
+      )}
     </div>
   );
 }

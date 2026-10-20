@@ -17,6 +17,7 @@ import {
   FiClock
 } from 'react-icons/fi';
 import { PeriodicKemasanOpnameModal } from '@/components/modals/PeriodicKemasanOpnameModal';
+import { Pagination } from '@/components/ui/Pagination';
 
 interface InventoryItem {
   id: string;
@@ -58,6 +59,8 @@ export default function InventoryDashboardPage() {
   const [data, setData] = useState<InventoryData | null>(null);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'RAW' | 'PRODUCT' | 'PACKAGE' | 'KEMASAN' | 'RESTOCK'>('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | 'all'>(50);
   const [viewingBreakdown, setViewingBreakdown] = useState<InventoryItem | null>(null);
   const [showOpnameModal, setShowOpnameModal] = useState(false);
 
@@ -100,6 +103,15 @@ export default function InventoryDashboardPage() {
 
     return typeFilter === 'all' || item.type === typeFilter;
   }) || [];
+
+  // Reset page when filter or search changes
+  useEffect(() => {
+    setPage(1);
+  }, [typeFilter, search, fromDate, toDate]);
+
+  const paginatedItems = pageSize === 'all'
+    ? filteredItems
+    : filteredItems.slice((page - 1) * pageSize, page * pageSize);
 
   const top5ItemsSold = data?.items
     .slice()
@@ -337,7 +349,7 @@ export default function InventoryDashboardPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredItems.map((item) => (
+                  paginatedItems.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 font-bold">{item.code}</td>
                       <td className="px-4 py-3 text-gray-600 truncate max-w-[150px]">{item.name}</td>
@@ -396,6 +408,15 @@ export default function InventoryDashboardPage() {
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            currentPage={page}
+            totalItems={filteredItems.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            itemLabel="item inventory"
+          />
         </div>
       </div>
 

@@ -60,6 +60,7 @@ model BOMComponent {
   childSku     SKU?                @relation("BOMChild", fields: [childSkuId], references: [id], onDelete: Cascade)
   childKemasan MasterItemKemasan?  @relation(fields: [childKemasanId], references: [id], onDelete: Cascade)
 
+  @@index([parentId])
   @@index([childSkuId])
   @@index([childKemasanId])
 }
@@ -230,7 +231,11 @@ model Sale {
   @@index([skuId])
   @@index([orderId])
   @@index([resi])
+  @@index([channel])
+  @@index([status])
+  @@index([date, channel])
   @@index([hasDiscrepancy])
+  @@index([scannedByLogistic, financeMatched])
 }
 
 enum Channel {
@@ -259,6 +264,8 @@ model Marketing {
   activity  String?
   notes     String?
   createdAt DateTime @default(now())
+
+  @@index([date])
 }
 
 model Return {
@@ -291,6 +298,8 @@ model OtherExpense {
   notes     String?
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
+
+  @@index([date])
 }
 
 enum ExpenseCategory {

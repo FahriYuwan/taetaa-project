@@ -788,4 +788,64 @@ Pada halaman Master SKU, item sikat seperti `SRB` (SIKAT RUBBER SUEDE BESAR) seb
 
 ---
 
+## 23. Perubahan 23: Optimasi Kinerja Menyeluruh untuk Skala Data Besar & Server Spek Ringan
+
+### 📌 Latar Belakang & Masalah
+Ketika data sistem bertambah besar (ribuan transaksi penjualan marketplace, ratusan mutasi inventory, dan ratusan master SKU), server dengan spesifikasi rendah (misalnya VPS 1-2 vCPU, RAM 1-2 GB) serta perangkat browser pengguna dapat mengalami kelambatan (*lag* / *freeze*).
+Penyebab utama yang teridentifikasi:
+1. **Full Table Scans di Database**: Relasi foreign key penting seperti `BOMComponent.parentId` serta kolom filter `Sale.channel`, `Sale.status`, `OtherExpense.date`, dan `Marketing.date` belum memiliki index database B-tree, menyebabkan PostgreSQL memindai seluruh baris tabel secara sekuensial.
+2. **Payload API & Konsumsi Memori Node.js**: Endpoint seperti `/api/dashboard` dan `/api/skus` sebelumnya memuat seluruh relasi dan kolom objek tanpa proyeksi `select`, termasuk ribuan array `inventory` yang membebani memori heap server.
+3. **Overload DOM di Browser**: Halaman Penjualan Marketplace sebelumnya merender seluruh 1.647 grup resi (lebih dari 20.000 elemen DOM) sekaligus tanpa paginasi. Setiap pengetikan huruf di kotak pencarian memaksa React menghitung ulang dan me-render ribuan node DOM secara sinkron.
+
+### 💡 Solusi & Implementasi Optimasi
+
+#### 1. Indexing Database PostgreSQL (`prisma/schema.prisma`)
+- Ditambahkan index komprehensif pada tabel transaksi dan relasi:
+  - `BOMComponent`: `@@index([parentId])` (mempercepat lookup resep BOM seketika).
+  - `Sale`: `@@index([channel])`, `@@index([status])`, `@@index([date, channel])`, `@@index([scannedByLogistic, financeMatched])`.
+  - `OtherExpense`: `@@index([date])`.
+  - `Marketing`: `@@index([date])`.
+- Index disinkronkan ke PostgreSQL dengan `npx prisma db push` (selesai dalam 579ms).
+
+#### 2. Lean Data Projection pada Backend API
+- **`/api/dashboard`**:
+  - Mengganti `include: { sku: true }` dengan seleksi kolom ramping (`select: { id, date, qty, unitPrice, total, channel, orderId, resi, fee, netRevenue, voucher, discount, platformFee, shippingFee, omset, hpp, totalHpp, laba, status, skuId, sku: { select: { code, hppPrice } } }`).
+  - Mengoptimalkan query `Purchase`, `OtherExpense`, dan `Breakage` agar hanya mengambil kolom nilai numerik yang dibutuhkan kalkulasi KPI.
+  - Waktu respon dashboard turun drastis menjadi **~230 ms** dengan ukuran payload JSON hanya **5,4 KB**.
+- **`/api/skus`**:
+  - Menghilangkan pemuatan relasi `inventory: true` yang sebelumnya menarik ribuan baris mutasi stok ke memori. Stok SKU diambil langsung dari ledger `SKUCostHistory`.
+  - Proyeksi `childSku` dan `childKemasan` dibatasi hanya pada kolom yang dibutuhkan BOM.
+  - Waktu respon Master SKU turun menjadi **~34 ms**.
+
+#### 3. Komponen Paginasi Cerdas & Ramping ([components/ui/Pagination.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/components/ui/Pagination.tsx))
+- Dibuat komponen paginasi reusable yang responsif dan estetis:
+  - Menyediakan navigasi halaman: `Pertama`, `Sebelumnya`, nomor halaman dengan elipsis cerdas (`...`), `Berikutnya`, dan `Terakhir`.
+  - Dropdown pilihan item per halaman: `25`, `50`, `100`, `200`, atau `Semua`.
+  - Indikator rentang: *"Menampilkan X - Y dari Z data"*.
+
+#### 4. Penerapan Paginasi pada Halaman Utama
+- **Penjualan Marketplace ([app/penjualan/marketplace/page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/penjualan/marketplace/page.tsx))**:
+  - Tabel Ringkas (`MarketplaceCompactTable`) dan Tabel Detail (`MarketplaceDetailedTable`) kini membatasi render DOM sebanyak 50 resi per halaman secara default.
+  - Jumlah elemen DOM di browser berkurang dari >20.000 menjadi ~600 node, menghilangkan *typing lag* saat pencarian resi/SKU.
+  - Baris footer total tetap menghitung dan menampilkan akumulasi finansial seluruh 1.647 resi dan 1.909 item secara 100% akurat.
+- **Master SKU ([app/master-sku/page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/master-sku/page.tsx))**:
+  - Dilengkapi paginasi 50 item per halaman untuk kelancaran rendering seluruh daftar produk.
+- **Pembelian Bahan & Kemasan ([app/pembelian-raw/page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/pembelian-raw/page.tsx))**:
+  - Dilengkapi paginasi 50 transaksi per halaman.
+- **Dashboard Inventory ([app/inventory/page.tsx](file:///d:/File%20Fahri/Semester%208/taetaa-project/app/inventory/page.tsx))**:
+  - Dilengkapi paginasi 50 item inventory per halaman.
+
+#### 5. Hasil Uji & Benchmark Kinerja
+- **Benchmark Respon API (Lokal)**:
+  - `/api/dashboard`: 234 ms (5.45 KB)
+  - `/api/sales`: 219 ms (1.2 MB)
+  - `/api/skus`: 34 ms (427 KB)
+  - `/api/purchases`: 67 ms (19 KB)
+  - `/api/inventory/summary`: 102 ms (79 KB)
+- **Unit Testing & TypeScript**:
+  - `npx tsc --noEmit`: 0 error.
+  - `npm test`: 23/23 tests pass.
+
+---
+
 *Dokumen ini dibuat resmi sebagai panduan dan referensi arsitektur Taetaa Company Sistem.*

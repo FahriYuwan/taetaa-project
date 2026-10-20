@@ -34,8 +34,33 @@ export async function GET(request: Request) {
             lte: to,
           },
         },
-        include: {
-          sku: true,
+        select: {
+          id: true,
+          date: true,
+          qty: true,
+          unitPrice: true,
+          total: true,
+          channel: true,
+          orderId: true,
+          resi: true,
+          fee: true,
+          netRevenue: true,
+          voucher: true,
+          discount: true,
+          platformFee: true,
+          shippingFee: true,
+          omset: true,
+          hpp: true,
+          totalHpp: true,
+          laba: true,
+          status: true,
+          skuId: true,
+          sku: {
+            select: {
+              code: true,
+              hppPrice: true,
+            },
+          },
         },
       }),
       prisma.purchase.findMany({
@@ -45,8 +70,13 @@ export async function GET(request: Request) {
             lte: to,
           },
         },
-        include: {
-          sku: true,
+        select: {
+          total: true,
+          sku: {
+            select: {
+              type: true,
+            },
+          },
         },
       }),
       prisma.sKU.findMany({
@@ -56,13 +86,22 @@ export async function GET(request: Request) {
           hppPrice: true,
         },
       }),
-      prisma.sKUCostHistory.findMany(),
+      prisma.sKUCostHistory.findMany({
+        select: {
+          skuId: true,
+          avgCost: true,
+          stock: true,
+        },
+      }),
       prisma.otherExpense.findMany({
         where: {
           date: {
             gte: from,
             lte: to,
           },
+        },
+        select: {
+          amount: true,
         },
       }),
       prisma.breakage.findMany({
@@ -71,6 +110,9 @@ export async function GET(request: Request) {
             gte: from,
             lte: to,
           },
+        },
+        select: {
+          total: true,
         },
       }),
       prisma.sale.findFirst({ orderBy: { date: 'asc' }, select: { date: true } }),

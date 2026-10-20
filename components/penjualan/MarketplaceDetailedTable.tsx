@@ -17,11 +17,17 @@ import {
   FiAlertTriangle,
 } from 'react-icons/fi';
 import { StatusDropdown } from './StatusDropdown';
+import { Pagination } from '@/components/ui/Pagination';
 
 interface MarketplaceDetailedTableProps {
   sales: Sale[];
+  totalSalesCount?: number;
   loading: boolean;
   totals: MarketplaceTotals;
+  currentPage?: number;
+  pageSize?: number | 'all';
+  onPageChange?: (p: number) => void;
+  onPageSizeChange?: (s: number | 'all') => void;
   editingStatusId?: string | null;
   editingStatus?: string;
   isSavingStatus?: boolean;
@@ -36,8 +42,13 @@ interface MarketplaceDetailedTableProps {
 
 export function MarketplaceDetailedTable({
   sales,
+  totalSalesCount,
   loading,
   totals,
+  currentPage = 1,
+  pageSize = 50,
+  onPageChange,
+  onPageSizeChange,
   editingStatusId,
   editingStatus,
   isSavingStatus,
@@ -337,28 +348,28 @@ export function MarketplaceDetailedTable({
             >
               <tr>
                 <td colSpan={6} className="px-4 py-3 text-gray-800 uppercase tracking-wider">
-                  TOTAL ({sales.length} Transaksi)
+                  TOTAL ({(totalSalesCount ?? sales.length).toLocaleString('id-ID')} Transaksi)
                 </td>
                 <td className="px-3 py-3 text-right text-gray-900">
                   {totals.qty.toLocaleString('id-ID')}
                 </td>
-                <td className="px-3 py-3 text-right text-gray-300">—</td>
+                <td className="px-3 py-3 text-right text-gray-300">-</td>
                 <td className="px-3 py-3 text-right font-mono text-purple-600">
-                  {(totals.voucher || 0) > 0 ? formatRp(totals.voucher || 0) : '—'}
+                  {(totals.voucher || 0) > 0 ? formatRp(totals.voucher || 0) : '-'}
                 </td>
                 <td className="px-3 py-3 text-right font-mono text-amber-600">
-                  {(totals.discount || 0) > 0 ? formatRp(totals.discount || 0) : '—'}
+                  {(totals.discount || 0) > 0 ? formatRp(totals.discount || 0) : '-'}
                 </td>
                 <td className="px-3 py-3 text-right font-mono text-red-600">
-                  {(totals.platformFee || 0) > 0 ? formatRp(totals.platformFee || 0) : '—'}
+                  {(totals.platformFee || 0) > 0 ? formatRp(totals.platformFee || 0) : '-'}
                 </td>
                 <td className="px-3 py-3 text-right font-mono text-gray-600">
-                  {(totals.shippingFee || 0) > 0 ? formatRp(totals.shippingFee || 0) : '—'}
+                  {(totals.shippingFee || 0) > 0 ? formatRp(totals.shippingFee || 0) : '-'}
                 </td>
                 <td className="px-4 py-3 text-right font-mono" style={{ color: colors.brand[500] }}>
                   {formatRp(totals.omset)}
                 </td>
-                <td className="px-3 py-3 text-right text-gray-300">—</td>
+                <td className="px-3 py-3 text-right text-gray-300">-</td>
                 <td className="px-4 py-3 text-right font-mono text-orange-600">
                   {formatRp(totals.totalHpp)}
                 </td>
@@ -375,6 +386,17 @@ export function MarketplaceDetailedTable({
           )}
         </table>
       </div>
+
+      {onPageChange && onPageSizeChange && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalSalesCount ?? sales.length}
+          pageSize={pageSize}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+          itemLabel="transaksi"
+        />
+      )}
     </div>
   );
 }

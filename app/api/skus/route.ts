@@ -14,26 +14,44 @@ export async function GET(req: Request) {
 
     const skus = await prisma.sKU.findMany({
       where,
-
       orderBy: { code: 'asc' },
       include: {
         bomComponents: {
           include: { 
-            childSku: true,
-            childKemasan: true
+            childSku: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                productSize: true,
+                hppPrice: true,
+              },
+            },
+            childKemasan: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                avgCost: true,
+              },
+            },
           },
         },
-        inventory: true,
       },
     });
 
-    const costHistories = await prisma.sKUCostHistory.findMany();
+    const costHistories = await prisma.sKUCostHistory.findMany({
+      select: {
+        skuId: true,
+        avgCost: true,
+        stock: true,
+      },
+    });
     const costMap = new Map(costHistories.map(ch => [ch.skuId, ch]));
 
     const result = skus.map(sku => {
-      const invStock = sku.inventory.reduce((sum, inv) => sum + inv.movement, 0);
       const ch = costMap.get(sku.id);
-      const stock = ch !== undefined ? ch.stock : invStock;
+      const stock = ch !== undefined ? ch.stock : 0;
       const avgCost = ch?.avgCost ?? sku.hppPrice ?? 0;
 
       // Enrich BOM components with real-time costs for validation
@@ -79,9 +97,8 @@ export async function GET(req: Request) {
 
       const estimatedBomHpp = rawCost + packagingCost;
 
-      const { inventory, ...rest } = sku;
       return {
-        ...rest,
+        ...sku,
         unit: sku.unit || 'ml',
         stock,
         avgCost,

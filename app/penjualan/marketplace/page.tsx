@@ -52,6 +52,8 @@ export default function PenjualanMarketplacePage() {
   const [editingStatus, setEditingStatus] = useState('');
   const [isSavingStatus, setIsSavingStatus] = useState(false);
   const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('compact');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | 'all'>(50);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -208,6 +210,24 @@ export default function PenjualanMarketplacePage() {
 
     return Array.from(groups.values());
   }, [filteredSales]);
+
+  // Reset to page 1 whenever filters or search change
+  useEffect(() => {
+    setPage(1);
+  }, [channelFilter, statusFilter, fromDate, toDate, search]);
+
+  // Paginated slices for buttery smooth DOM rendering
+  const paginatedOrderGroups = useMemo(() => {
+    if (pageSize === 'all') return orderGroups;
+    const start = (page - 1) * pageSize;
+    return orderGroups.slice(start, start + pageSize);
+  }, [orderGroups, page, pageSize]);
+
+  const paginatedSales = useMemo(() => {
+    if (pageSize === 'all') return filteredSales;
+    const start = (page - 1) * pageSize;
+    return filteredSales.slice(start, start + pageSize);
+  }, [filteredSales, page, pageSize]);
 
   const totals = useMemo<MarketplaceTotals>(() => {
     return filteredSales.reduce(
@@ -452,10 +472,15 @@ export default function PenjualanMarketplacePage() {
         {/* Data Table */}
         {viewMode === 'compact' ? (
           <MarketplaceCompactTable
-            orderGroups={orderGroups}
+            orderGroups={paginatedOrderGroups}
+            totalOrderGroupsCount={orderGroups.length}
             filteredSalesCount={filteredSales.length}
             loading={loading}
             totals={totals}
+            currentPage={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
             editingStatusId={editingStatusId}
             editingStatus={editingStatus}
             isSavingStatus={isSavingStatus}
@@ -469,9 +494,14 @@ export default function PenjualanMarketplacePage() {
           />
         ) : (
           <MarketplaceDetailedTable
-            sales={filteredSales}
+            sales={paginatedSales}
+            totalSalesCount={filteredSales.length}
             loading={loading}
             totals={totals}
+            currentPage={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
             editingStatusId={editingStatusId}
             editingStatus={editingStatus}
             isSavingStatus={isSavingStatus}
