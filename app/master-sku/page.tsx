@@ -426,6 +426,17 @@ function BulkPasteModal({ isOpen, onClose, onSuccess }: { isOpen: boolean, onClo
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !loading) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, loading, onClose]);
+
   if (!isOpen) return null;
 
   const sampleData = `SBN\tSabun Curah 20 Liter\tRAW\t20000\t0\t10
@@ -450,7 +461,7 @@ SBN2-PCF\tSabun Kopi 500ml\tPACKAGE\t500\t15000\t50`;
       } else {
         showToast({ message: data.error, type: 'error' });
       }
-    } catch (err) {
+    } catch {
       showToast({ message: 'Gagal mengimpor data', type: 'error' });
     } finally {
       setLoading(false);
@@ -458,34 +469,36 @@ SBN2-PCF\tSabun Kopi 500ml\tPACKAGE\t500\t15000\t50`;
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg p-6 max-w-3xl w-full shadow-xl">
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="text-lg font-bold text-gray-900">Bulk Paste Master SKU</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl font-bold">✕</button>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-lg p-5 max-w-2xl w-full shadow-lg border border-gray-200">
+        <div className="flex justify-between items-start mb-3">
+          <div>
+            <h3 className="text-base font-semibold text-gray-900">Bulk Paste Master SKU</h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Tambah banyak data SKU sekaligus dari Excel / Spreadsheet
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Tutup"
+            className="text-gray-400 hover:text-gray-700 p-1 rounded transition-colors text-base"
+          >
+            ✕
+          </button>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3.5 mb-4 text-xs text-blue-900 space-y-2">
-          <div className="font-semibold flex items-center gap-1.5 text-blue-800">
-            <span>📋 Format Kolom dari Excel / Spreadsheet (Tab-Separated):</span>
-          </div>
-          <div className="bg-white/80 p-2 rounded border border-blue-100 font-mono text-[11px] overflow-x-auto text-blue-950 font-semibold">
+        <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded text-xs text-gray-700">
+          <div className="font-medium text-gray-900 mb-1">Format Kolom (Tab-Separated):</div>
+          <div className="font-mono text-[11px] bg-white p-1.5 border border-gray-200 rounded text-gray-800 overflow-x-auto whitespace-nowrap">
             KODE [TAB] NAMA [TAB] TIPE [TAB] UKURAN_ATAU_KUANTITAS [TAB] HARGA_JUAL [TAB] STOK_MIN
           </div>
-          <div className="text-[11px] text-blue-700 leading-relaxed grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 pt-1">
-            <p>• <strong>Wajib:</strong> KODE, NAMA, TIPE (<code>RAW</code>, <code>PRODUCT</code>, <code>PACKAGE</code>)</p>
-            <p>• <strong>UKURAN / KUANTITAS:</strong> Ukuran volume cairan dlm ml (misal <code>500</code> untuk 500ml) atau jumlah item dlm pcs (misal <code>1</code> untuk sikat, <code>2</code> untuk bundling) <span className="text-blue-500 italic">(opsional, default 0)</span></p>
-            <p>• <strong>HARGA JUAL:</strong> Rekomendasi harga jual untuk PACKAGE, kosongkan untuk RAW/PRODUCT <span className="text-blue-500 italic">(opsional)</span></p>
-            <p>• <strong>STOK MIN:</strong> Batas minimum peringatan stok <span className="text-blue-500 italic">(opsional, default 0)</span></p>
-            <div className="sm:col-span-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded p-2 text-[11px] mt-1">
-              💡 <strong>HPP (Biaya Modal) Tidak Perlu Diinput:</strong> HPP dihitung otomatis oleh sistem secara dinamis berdasarkan data mutasi pembelian riil (Weighted Average Cost / COGS RAW) dan resep BOM produksi (COGS WIP/Marketplace).
-            </div>
-            <p className="sm:col-span-2 text-gray-500 italic">• Baris header (judul kolom) akan dilewati otomatis saat paste.</p>
-          </div>
+          <p className="mt-1.5 text-gray-500 text-[11px]">
+            Tipe: RAW, PRODUCT, atau PACKAGE. HPP dihitung otomatis oleh sistem dari data mutasi pembelian dan BOM. Baris header diabaikan.
+          </p>
         </div>
 
         <div className="flex justify-between items-center mb-1.5">
-          <label className="text-xs font-semibold text-gray-700">Tempel Data dari Spreadsheet:</label>
+          <label className="text-xs font-medium text-gray-700">Tempel Data dari Spreadsheet:</label>
           <button
             type="button"
             onClick={() => setText(sampleData)}
@@ -498,14 +511,14 @@ SBN2-PCF\tSabun Kopi 500ml\tPACKAGE\t500\t15000\t50`;
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          className="w-full h-64 p-3 border rounded text-xs font-mono mb-4 focus:ring-1 focus:ring-blue-500 outline-none"
+          className="w-full h-56 p-2.5 border border-gray-300 rounded text-xs font-mono mb-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           placeholder={"KODE\tNAMA\tTIPE\tUKURAN_ML\tHARGA_JUAL\tSTOK_MIN\nSBN\tSabun Curah 20 Liter\tRAW\t20000\t0\t10\nSBN1-PBG\tSabun Bubblegum 1L\tPACKAGE\t1000\t25000\t35"}
         />
 
-        <div className="flex justify-end gap-3">
+        <div className="flex justify-end gap-2.5 pt-1">
           <Button variant="secondary" onClick={onClose} disabled={loading}>Batal</Button>
-          <Button variant="primary" onClick={handleImport} disabled={loading}>
-            {loading ? 'Mengimpor...' : 'Impor Sekarang'}
+          <Button variant="primary" onClick={handleImport} disabled={loading || !text.trim()}>
+            {loading ? 'Mengimpor...' : 'Impor Data'}
           </Button>
         </div>
       </div>

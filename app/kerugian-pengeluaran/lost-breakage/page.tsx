@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '@/components/header/PageHeader';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Button } from '@/components/ui/Button';
 import { NumberInput } from '@/components/ui/NumberInput';
+import { Pagination } from '@/components/ui/Pagination';
 import { ConfirmDialog } from '@/components/modals/ConfirmDialog';
+import { BulkKerugianModal } from '@/components/modals/BulkKerugianModal';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
 import { FiAlertTriangle } from 'react-icons/fi';
@@ -29,6 +31,7 @@ export default function LostBreakagePage() {
   const [items, setItems] = useState<Breakage[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
   const [editingItem, setEditingItem] = useState<Breakage | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const { showToast } = useToast();
@@ -115,6 +118,31 @@ export default function LostBreakagePage() {
     }
   }
 
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | 'all'>(25);
+
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((item) =>
+      !q ||
+      item.sku.code.toLowerCase().includes(q) ||
+      item.sku.name.toLowerCase().includes(q) ||
+      item.category.toLowerCase().includes(q) ||
+      (item.notes && item.notes.toLowerCase().includes(q))
+    );
+  }, [items, search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, fromDate, toDate]);
+
+  const paginatedItems = useMemo(() => {
+    if (pageSize === 'all') return filteredItems;
+    const start = (page - 1) * pageSize;
+    return filteredItems.slice(start, start + pageSize);
+  }, [filteredItems, page, pageSize]);
+
   const totalLoss = items.reduce((sum, item) => sum + item.total, 0);
 
   return (
@@ -123,7 +151,15 @@ export default function LostBreakagePage() {
         title="Barang Rusak & Hilang"
         subtitle="Catat barang rusak, hilang, atau gagal QC. Stok SKU akan otomatis berkurang."
         actions={
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <input
+              type="text"
+              placeholder="Cari SKU / nama / alasan..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="px-3.5 py-2 rounded border text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              style={{ borderColor: colors.neutral.border }}
+            />
             <DatePresetFilter
               fromDate={fromDate}
               toDate={toDate}
@@ -132,6 +168,9 @@ export default function LostBreakagePage() {
                 setToDate(to);
               }}
             />
+            <Button variant="secondary" onClick={() => setShowBulkModal(true)}>
+              Bulk Paste
+            </Button>
             <Button variant="primary" icon={<FiAlertTriangle size={16} />} onClick={() => setShowAddModal(true)}>
               Catat Kerugian
             </Button>
@@ -166,10 +205,14 @@ export default function LostBreakagePage() {
             <tbody className="divide-y" style={{ borderColor: colors.neutral.border }}>
               {loading ? (
                 <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-400">Loading...</td></tr>
-              ) : items.length === 0 ? (
-                <tr><td colSpan={7} className="px-6 py-20 text-center text-gray-400 font-medium">Belum ada data.</td></tr>
+              ) : filteredItems.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-20 text-center text-gray-400 font-medium">
+                    {search ? 'Tidak ada data kerugian yang cocok dengan pencarian.' : 'Belum ada data.'}
+                  </td>
+                </tr>
               ) : (
-                items.map((item) => (
+                paginatedItems.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 text-center whitespace-nowrap">{new Date(item.date).toLocaleDateString('id-ID')}</td>
                     <td className="px-6 py-4">
@@ -190,7 +233,7 @@ export default function LostBreakagePage() {
                     <td className="px-6 py-4 text-right font-bold text-red-600">
                       Rp {item.total.toLocaleString('id-ID')}
                     </td>
-                    <td className="px-6 py-4 text-gray-500 italic text-xs">{item.notes || '—'}</td>
+                    <td className="px-6 py-4 text-gray-500 italic text-xs">{item.notes || '-'}</td>
                     <td className="px-6 py-4 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-2">
                         <Button
@@ -198,14 +241,14 @@ export default function LostBreakagePage() {
                           size="sm"
                           onClick={() => setEditingItem(item)}
                         >
-                          ✏️ Edit
+                          Edit
                         </Button>
                         <button
                           onClick={() => setDeleteConfirmId(item.id)}
                           className="px-3 py-1.5 rounded text-xs font-semibold border transition-colors text-red-600 border-red-200 hover:bg-red-50 hover:border-red-400"
                           title="Hapus kerugian"
                         >
-                          🗑️ Hapus
+                          Hapus
                         </button>
                       </div>
                     </td>
@@ -214,6 +257,17 @@ export default function LostBreakagePage() {
               )}
             </tbody>
           </table>
+
+          {/* Pagination Controls */}
+          <Pagination
+            currentPage={page}
+            totalItems={filteredItems.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[25, 50, 100, 'all']}
+            itemLabel="item kerugian"
+          />
         </div>
       </div>
 
@@ -227,6 +281,15 @@ export default function LostBreakagePage() {
           onSubmit={editingItem ? (data: any) => handleEdit(editingItem.id, data) : handleAdd}
         />
       )}
+
+      <BulkKerugianModal
+        isOpen={showBulkModal}
+        onClose={() => setShowBulkModal(false)}
+        onSuccess={() => {
+          setShowBulkModal(false);
+          fetchBreakage();
+        }}
+      />
 
       <ConfirmDialog
         isOpen={!!deleteConfirmId}

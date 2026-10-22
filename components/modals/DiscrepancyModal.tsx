@@ -145,9 +145,9 @@ function DiscrepancyResolveCard({
 
       {/* SKU & order info */}
       <div>
-        <p className="text-sm font-bold text-gray-900">{sale.sku.code} — {sale.sku.name}</p>
+        <p className="text-sm font-bold text-gray-900">{sale.sku.code} - {sale.sku.name}</p>
         <p className="text-[11px] text-gray-500 font-mono mt-0.5">
-          Resi: {sale.resi || '—'} · Order: {sale.orderId || '—'}
+          Resi: {sale.resi || '-'} · Order: {sale.orderId || '-'}
         </p>
       </div>
 
@@ -264,9 +264,9 @@ function UnmatchedScanCard({ sale }: { sale: Sale }) {
         <span className="text-[10px] text-gray-400">{formatDate(sale.date)}</span>
       </div>
       <div>
-        <p className="text-sm font-bold text-gray-900">{sale.sku.code} — {sale.sku.name}</p>
+        <p className="text-sm font-bold text-gray-900">{sale.sku.code} - {sale.sku.name}</p>
         <p className="text-[11px] font-mono text-gray-500 mt-0.5">
-          Resi: {sale.resi || '—'} · Qty: {sale.qty} unit
+          Resi: {sale.resi || '-'} · Qty: {sale.qty} unit
         </p>
       </div>
       <p className="text-[11px] text-gray-400">

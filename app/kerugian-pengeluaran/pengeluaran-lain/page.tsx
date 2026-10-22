@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '@/components/header/PageHeader';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Button } from '@/components/ui/Button';
 import { NumberInput } from '@/components/ui/NumberInput';
+import { Pagination } from '@/components/ui/Pagination';
 import { ConfirmDialog } from '@/components/modals/ConfirmDialog';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
@@ -110,6 +111,30 @@ export default function PengeluaranLainPage() {
     }
   }
 
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | 'all'>(25);
+
+  const filteredExpenses = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return expenses.filter((e) =>
+      !q ||
+      e.recipient.toLowerCase().includes(q) ||
+      e.category.toLowerCase().includes(q) ||
+      (e.notes && e.notes.toLowerCase().includes(q))
+    );
+  }, [expenses, search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, fromDate, toDate]);
+
+  const paginatedExpenses = useMemo(() => {
+    if (pageSize === 'all') return filteredExpenses;
+    const start = (page - 1) * pageSize;
+    return filteredExpenses.slice(start, start + pageSize);
+  }, [filteredExpenses, page, pageSize]);
+
   const totalExpense = expenses.reduce((sum, e) => sum + e.amount, 0);
 
   return (
@@ -118,7 +143,15 @@ export default function PengeluaranLainPage() {
         title="Pengeluaran Lain"
         subtitle="Catat pengeluaran di luar alur bisnis inti (bonus, compliment, dll)."
         actions={
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <input
+              type="text"
+              placeholder="Cari penerima / kategori / catatan..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="px-3.5 py-2 rounded border text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              style={{ borderColor: colors.neutral.border }}
+            />
             <DatePresetFilter
               fromDate={fromDate}
               toDate={toDate}
@@ -160,10 +193,14 @@ export default function PengeluaranLainPage() {
             <tbody className="divide-y" style={{ borderColor: colors.neutral.border }}>
               {loading ? (
                 <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-400">Loading...</td></tr>
-              ) : expenses.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-20 text-center text-gray-400 font-medium">Belum ada data.</td></tr>
+              ) : filteredExpenses.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-20 text-center text-gray-400 font-medium">
+                    {search ? 'Tidak ada data pengeluaran yang cocok dengan pencarian.' : 'Belum ada data.'}
+                  </td>
+                </tr>
               ) : (
-                expenses.map((e) => (
+                paginatedExpenses.map((e) => (
                   <tr key={e.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 text-center whitespace-nowrap">{new Date(e.date).toLocaleDateString('id-ID')}</td>
                     <td className="px-6 py-4 text-center">
@@ -179,7 +216,7 @@ export default function PengeluaranLainPage() {
                     <td className="px-6 py-4 text-right font-bold" style={{ color: colors.semantic.red }}>
                       Rp {e.amount.toLocaleString('id-ID')}
                     </td>
-                    <td className="px-6 py-4 text-gray-500 italic">{e.notes || '—'}</td>
+                    <td className="px-6 py-4 text-gray-500 italic">{e.notes || '-'}</td>
                     <td className="px-6 py-4 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-2">
                         <Button
@@ -187,14 +224,14 @@ export default function PengeluaranLainPage() {
                           size="sm"
                           onClick={() => setEditingExpense(e)}
                         >
-                          ✏️ Edit
+                          Edit
                         </Button>
                         <button
                           onClick={() => setDeleteConfirmId(e.id)}
                           className="px-3 py-1.5 rounded text-xs font-semibold border transition-colors text-red-600 border-red-200 hover:bg-red-50 hover:border-red-400"
                           title="Hapus pengeluaran"
                         >
-                          🗑️ Hapus
+                          Hapus
                         </button>
                       </div>
                     </td>
@@ -203,6 +240,17 @@ export default function PengeluaranLainPage() {
               )}
             </tbody>
           </table>
+
+          {/* Pagination Controls */}
+          <Pagination
+            currentPage={page}
+            totalItems={filteredExpenses.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[25, 50, 100, 'all']}
+            itemLabel="item pengeluaran"
+          />
         </div>
       </div>
 

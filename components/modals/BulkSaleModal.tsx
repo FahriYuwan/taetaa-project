@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { colors } from '@/lib/theme';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/lib/toast';
@@ -28,8 +28,20 @@ export function BulkSaleModal({ isOpen, onClose, onSuccess }: BulkSaleModalProps
     created: number;
     skipped: number;
     errors: string[];
+    discrepancies?: number;
   } | null>(null);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !loading) {
+        handleClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, loading]);
 
   if (!isOpen) return null;
 
@@ -51,7 +63,7 @@ export function BulkSaleModal({ isOpen, onClose, onSuccess }: BulkSaleModalProps
       } else {
         showToast({ message: data.error, type: 'error' });
       }
-    } catch (err) {
+    } catch {
       showToast({ message: 'Gagal mengimpor data', type: 'error' });
     } finally {
       setLoading(false);
@@ -65,70 +77,42 @@ export function BulkSaleModal({ isOpen, onClose, onSuccess }: BulkSaleModalProps
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 max-w-5xl w-full shadow-2xl mx-4 max-h-[90vh] overflow-auto">
-        <div className="flex justify-between items-center mb-5">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg p-5 max-w-3xl w-full shadow-lg max-h-[90vh] overflow-y-auto border border-gray-200">
+        <div className="flex justify-between items-start mb-3">
           <div>
-            <h3 className="text-xl font-bold text-gray-900">Bulk Paste Finance — Penjualan Marketplace</h3>
+            <h3 className="text-base font-semibold text-gray-900">Bulk Paste Finance - Penjualan Marketplace</h3>
             <p className="text-xs text-gray-500 mt-0.5">
-              Data finance akan dicocokkan otomatis dengan hasil scan logistik
+              Data finance dicocokkan otomatis dengan nomor resi/order hasil scan logistik
             </p>
           </div>
-          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+          <button
+            onClick={handleClose}
+            aria-label="Tutup"
+            className="text-gray-400 hover:text-gray-700 p-1 rounded transition-colors text-base"
+          >
+            ✕
+          </button>
         </div>
 
-        {/* Format Guide */}
-        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5 text-[11px]">
-          <p className="font-bold text-blue-800 mb-2 uppercase text-[10px] tracking-wider">
-            Format Kolom (Tab-Separated dari Excel / Spreadsheet):
-          </p>
-          <div className="overflow-x-auto">
-            <table className="text-blue-700 text-[10px] border-collapse">
-              <thead>
-                <tr>
-                  {['NO', 'NOMOR RESI', 'ORDER CODE', 'DATE', 'SKU CODE', 'PRODUCT', 'QTY', 'PRICE', 'VOUCHER', 'DISCOUNT', 'PLATFORM FEE', 'SHIPPING FEE', 'OMSET', 'HPP', 'TOTAL HPP', 'LABA'].map((col) => (
-                    <th key={col} className="border border-blue-200 px-2 py-1 bg-blue-100 font-bold whitespace-nowrap">
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-                <tr>
-                  <td className="border border-blue-200 px-2 py-1 text-center">1</td>
-                  <td className="border border-blue-200 px-2 py-1 font-mono">SPXID0483920193</td>
-                  <td className="border border-blue-200 px-2 py-1 font-mono">240801733136US</td>
-                  <td className="border border-blue-200 px-2 py-1">30-Sep</td>
-                  <td className="border border-blue-200 px-2 py-1 font-mono">PBG</td>
-                  <td className="border border-blue-200 px-2 py-1">Parfum Bubblegum...</td>
-                  <td className="border border-blue-200 px-2 py-1 text-center">2</td>
-                  <td className="border border-blue-200 px-2 py-1">120.000</td>
-                  <td className="border border-blue-200 px-2 py-1">10.000</td>
-                  <td className="border border-blue-200 px-2 py-1">10</td>
-                  <td className="border border-blue-200 px-2 py-1">7.800</td>
-                  <td className="border border-blue-200 px-2 py-1">1.200</td>
-                  <td className="border border-blue-200 px-2 py-1">102.200</td>
-                  <td className="border border-blue-200 px-2 py-1">45.000</td>
-                  <td className="border border-blue-200 px-2 py-1">45.000</td>
-                  <td className="border border-blue-200 px-2 py-1">57.200</td>
-                </tr>
-              </thead>
-            </table>
+        <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded text-xs text-gray-700">
+          <div className="font-medium text-gray-900 mb-1">Format Kolom (Tab-Separated):</div>
+          <div className="font-mono text-[11px] bg-white p-1.5 border border-gray-200 rounded text-gray-800 overflow-x-auto whitespace-nowrap">
+            NO [TAB] NOMOR_RESI [TAB] ORDER_CODE [TAB] DATE [TAB] SKU_CODE [TAB] PRODUCT [TAB] QTY [TAB] PRICE [TAB] VOUCHER [TAB] DISCOUNT [TAB] PLATFORM_FEE [TAB] SHIPPING_FEE [TAB] OMSET [TAB] HPP [TAB] TOTAL_HPP [TAB] LABA
           </div>
-          <p className="mt-2 text-blue-600">
-            💡 Baris header (NO, ORDER CODE, ...) akan dilewati otomatis. Kolom HPP & TOTAL HPP dari data ini akan dipakai jika ada, 
-            jika tidak ada akan dihitung dari HPP SKU × Qty.
+          <p className="mt-1.5 text-gray-500 text-[11px]">
+            Mendukung format 16 kolom baru (dengan Resi) dan format 15 kolom lama. Baris header diabaikan.
           </p>
         </div>
 
-        {/* Channel Selector */}
-        <div className="mb-4">
-          <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">
-            Marketplace (untuk data baru yang tidak cocok dengan scan logistik)
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-gray-700 mb-1">
+            Marketplace Saluran (untuk data baru yang belum ada scan logistik):
           </label>
           <select
             value={channel}
             onChange={(e) => setChannel(e.target.value)}
-            className="px-3 py-2 rounded-lg border text-sm bg-white font-medium"
-            style={{ borderColor: colors.neutral.border }}
+            className="px-2.5 py-1.5 rounded border border-gray-300 text-xs bg-white text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             {CHANNELS.map((ch) => (
               <option key={ch.value} value={ch.value}>{ch.label}</option>
@@ -136,42 +120,44 @@ export function BulkSaleModal({ isOpen, onClose, onSuccess }: BulkSaleModalProps
           </select>
         </div>
 
-        {/* Text Area */}
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          className="w-full h-64 p-3 border rounded-xl text-xs font-mono mb-4 focus:outline-none focus:ring-2 focus:ring-blue-200"
-          style={{ borderColor: colors.neutral.border }}
-          placeholder="Paste data dari Excel/Spreadsheet finance di sini (Ctrl+A lalu Ctrl+C dari spreadsheet)..."
+          className="w-full h-56 p-2.5 border border-gray-300 rounded text-xs font-mono mb-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder="Paste baris data finance dari Excel / Spreadsheet di sini..."
         />
 
-        {/* Result */}
         {result && (
-          <div className="mb-4 p-4 rounded-xl border bg-green-50 border-green-200 text-sm space-y-1">
-            <p className="font-bold text-green-800">✓ Import Selesai</p>
+          <div className="mb-3 p-3 rounded border border-gray-200 bg-gray-50 text-xs text-gray-800 space-y-1">
+            <div className="font-semibold text-gray-900">Hasil Rekonsiliasi:</div>
             {result.matched > 0 && (
-              <p className="text-green-700">✅ {result.matched} dicocokkan dengan scan logistik</p>
+              <div className="text-emerald-700 font-medium">{result.matched} data cocok dengan scan logistik.</div>
             )}
             {result.created > 0 && (
-              <p className="text-blue-700">➕ {result.created} data baru dibuat</p>
+              <div className="text-blue-700 font-medium">{result.created} transaksi baru dibuat.</div>
+            )}
+            {result.discrepancies !== undefined && result.discrepancies > 0 && (
+              <div className="text-amber-700 font-medium">{result.discrepancies} transaksi ditandai SELISIH QTY (perlu konfirmasi).</div>
             )}
             {result.skipped > 0 && (
-              <p className="text-gray-500">⏭ {result.skipped} baris dilewati</p>
+              <div className="text-gray-600">{result.skipped} baris dilewati.</div>
             )}
             {result.errors.length > 0 && (
-              <div className="mt-2">
-                <p className="text-red-600 font-bold text-xs">Error:</p>
+              <div className="mt-2 pt-2 border-t border-gray-200 text-red-700 space-y-0.5">
+                <div className="font-medium">Catatan:</div>
                 {result.errors.map((e, i) => (
-                  <p key={i} className="text-red-500 text-xs">• {e}</p>
+                  <div key={i}>- {e}</div>
                 ))}
               </div>
             )}
           </div>
         )}
 
-        <div className="flex justify-end gap-3">
-          <Button variant="secondary" onClick={handleClose} disabled={loading}>Tutup</Button>
-          <Button variant="primary" onClick={handleImport} disabled={loading || !text.trim()} style={{ minWidth: '160px' }}>
+        <div className="flex justify-end gap-2.5 pt-1">
+          <Button variant="secondary" onClick={handleClose} disabled={loading}>
+            {result ? 'Tutup' : 'Batal'}
+          </Button>
+          <Button variant="primary" onClick={handleImport} disabled={loading || !text.trim()}>
             {loading ? 'Memproses...' : 'Impor & Cocokkan'}
           </Button>
         </div>

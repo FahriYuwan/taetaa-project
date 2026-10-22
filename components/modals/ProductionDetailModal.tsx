@@ -182,8 +182,8 @@ export function ProductionDetailModal({
           );
           items.push({
             id: inp.id,
-            code: inp.inputSku?.code || '—',
-            name: inp.inputSku?.name || '—',
+            code: inp.inputSku?.code || '-',
+            name: inp.inputSku?.name || '-',
             qtyUsed: inp.qtyUsed,
             unit: 'unit',
             productSize: inp.inputSku?.productSize,
@@ -222,8 +222,8 @@ export function ProductionDetailModal({
             const item = bom.childSku;
             items.push({
               id: bom.id,
-              code: item?.code || '—',
-              name: item?.name || '—',
+              code: item?.code || '-',
+              name: item?.name || '-',
               qtyUsed: bom.quantity * activeProduction.outputQty,
               unit: 'unit',
               productSize: item?.productSize,
@@ -246,8 +246,8 @@ export function ProductionDetailModal({
 
         return {
           id: bom.id,
-          code: item?.code || '—',
-          name: item?.name || '—',
+          code: item?.code || '-',
+          name: item?.name || '-',
           qtyUsed,
           unit: 'pcs',
           productSize: undefined as number | undefined,
@@ -394,11 +394,11 @@ export function ProductionDetailModal({
                                 ) : item.isManual ? (
                                   item.isManualChecked ? (
                                     <span className="text-emerald-700 font-semibold text-xs">
-                                      ✓ Dicentang habis — 1 pcs terpakai
+                                      Dicentang habis - 1 pcs terpakai
                                     </span>
                                   ) : (
                                     <span className="text-gray-500 font-medium text-xs">
-                                      ☐ Tidak dicentang — 0 pcs terpakai (stok tidak berubah)
+                                      Tidak dicentang - 0 pcs terpakai (stok tidak berubah)
                                     </span>
                                   )
                                 ) : (

@@ -1,15 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/header/PageHeader';
 import { Button, Badge } from '@/components/ui/Button';
 import { NumberInput } from '@/components/ui/NumberInput';
+import { Pagination } from '@/components/ui/Pagination';
 import { ConfirmDialog } from '@/components/modals/ConfirmDialog';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
 import { FiShoppingCart, FiPlus, FiEdit2, FiTrash2, FiClock, FiAlertCircle } from 'react-icons/fi';
 import { PeriodicKemasanOpnameModal } from '@/components/modals/PeriodicKemasanOpnameModal';
+import { BulkKemasanModal } from '@/components/modals/BulkKemasanModal';
 
 interface KemasanItem {
   id: string;
@@ -27,8 +29,11 @@ export default function MasterKemasanPage() {
   const [items, setItems] = useState<KemasanItem[]>([]);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | 'all'>(25);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
   const [showOpnameModal, setShowOpnameModal] = useState(false);
   const [periodicAlertCount, setPeriodicAlertCount] = useState(0);
   const [editingItem, setEditingItem] = useState<KemasanItem | null>(null);
@@ -109,10 +114,25 @@ export default function MasterKemasanPage() {
     }
   }
 
-  const filteredItems = items.filter(item =>
-    item.code.toLowerCase().includes(search.toLowerCase()) ||
-    item.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((item) =>
+      !q ||
+      item.code.toLowerCase().includes(q) ||
+      item.name.toLowerCase().includes(q)
+    );
+  }, [items, search]);
+
+  // Reset page when filter or search changes
+  useEffect(() => {
+    setPage(1);
+  }, [filter, search]);
+
+  const paginatedItems = useMemo(() => {
+    if (pageSize === 'all') return filteredItems;
+    const start = (page - 1) * pageSize;
+    return filteredItems.slice(start, start + pageSize);
+  }, [filteredItems, page, pageSize]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: colors.neutral.bg }}>
@@ -142,6 +162,9 @@ export default function MasterKemasanPage() {
                 Beli Kemasan
               </Button>
             </Link>
+            <Button variant="secondary" onClick={() => setShowBulkModal(true)}>
+              Bulk Paste
+            </Button>
             <Button variant="primary" icon={<FiPlus size={15} />} onClick={() => setShowAddModal(true)}>
               Tambah Item
             </Button>
@@ -219,66 +242,91 @@ export default function MasterKemasanPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredItems.map((item) => (
-                <tr key={item.id} style={{ borderBottomColor: colors.neutral.border, borderBottomWidth: '1px' }}>
-                  <td className="px-6 py-4 text-sm font-bold text-gray-900">{item.code}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{item.name}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="px-2.5 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">{item.category}</span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    {item.isPeriodic ? (
-                      <span className="px-2.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                        Periodik (Mingguan)
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
-                        Harian (Perpetual)
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-right text-sm">{item.stock.toLocaleString('id-ID')}</td>
-                  <td className="px-6 py-4 text-right text-sm text-gray-500">
-                    {item.stockMin && item.stockMin > 0 ? `${item.stockMin.toLocaleString('id-ID')} pcs` : '-'}
-                  </td>
-                  <td className="px-6 py-4 text-right text-sm font-medium" style={{ color: colors.neutral.textStrong }}>
-                    <span
-                      className="cursor-help text-gray-700"
-                      title={
-                        item.avgCost > 0
-                          ? "HPP dinamis dari histori pembelian supplier (Weighted Average)"
-                          : "Belum ada histori pembelian supplier (Rp 0)"
-                      }
-                    >
-                      {item.avgCost > 0
-                        ? `Rp ${item.avgCost % 1 === 0 ? item.avgCost.toLocaleString('id-ID') : item.avgCost.toLocaleString('id-ID', { maximumFractionDigits: 2 })}`
-                        : 'Rp 0'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        className="p-1 text-gray-500 hover:text-blue-600 rounded transition-colors cursor-pointer"
-                        onClick={() => { setEditingItem(item); setShowAddModal(true); }}
-                        title="Edit Item"
-                        aria-label="Edit Item"
-                      >
-                        <FiEdit2 size={16} />
-                      </button>
-                      <button
-                        className="p-1 text-gray-500 hover:text-rose-600 rounded transition-colors cursor-pointer"
-                        onClick={() => setDeletingItemId(item.id)}
-                        title="Hapus Item"
-                        aria-label="Hapus Item"
-                      >
-                        <FiTrash2 size={16} />
-                      </button>
-                    </div>
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-400">
+                    Memuat data kemasan...
                   </td>
                 </tr>
-              ))}
+              ) : filteredItems.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-16 text-center text-gray-400 font-medium">
+                    Tidak ada item kemasan yang cocok.
+                  </td>
+                </tr>
+              ) : (
+                paginatedItems.map((item) => (
+                  <tr key={item.id} style={{ borderBottomColor: colors.neutral.border, borderBottomWidth: '1px' }}>
+                    <td className="px-6 py-4 text-sm font-bold text-gray-900">{item.code}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{item.name}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="px-2.5 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">{item.category}</span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {item.isPeriodic ? (
+                        <span className="px-2.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                          Periodik (Mingguan)
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+                          Harian (Perpetual)
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm">{item.stock.toLocaleString('id-ID')}</td>
+                    <td className="px-6 py-4 text-right text-sm text-gray-500">
+                      {item.stockMin && item.stockMin > 0 ? `${item.stockMin.toLocaleString('id-ID')} pcs` : '-'}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm font-medium" style={{ color: colors.neutral.textStrong }}>
+                      <span
+                        className="cursor-help text-gray-700"
+                        title={
+                          item.avgCost > 0
+                            ? "HPP dinamis dari histori pembelian supplier (Weighted Average)"
+                            : "Belum ada histori pembelian supplier (Rp 0)"
+                        }
+                      >
+                        {item.avgCost > 0
+                          ? `Rp ${item.avgCost % 1 === 0 ? item.avgCost.toLocaleString('id-ID') : item.avgCost.toLocaleString('id-ID', { maximumFractionDigits: 2 })}`
+                          : 'Rp 0'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          className="p-1 text-gray-500 hover:text-blue-600 rounded transition-colors cursor-pointer"
+                          onClick={() => { setEditingItem(item); setShowAddModal(true); }}
+                          title="Edit Item"
+                          aria-label="Edit Item"
+                        >
+                          <FiEdit2 size={16} />
+                        </button>
+                        <button
+                          className="p-1 text-gray-500 hover:text-rose-600 rounded transition-colors cursor-pointer"
+                          onClick={() => setDeletingItemId(item.id)}
+                          title="Hapus Item"
+                          aria-label="Hapus Item"
+                        >
+                          <FiTrash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
+
+          {/* Pagination Controls */}
+          <Pagination
+            currentPage={page}
+            totalItems={filteredItems.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[25, 50, 100, 'all']}
+            itemLabel="item kemasan"
+          />
         </div>
       </div>
 
@@ -305,6 +353,16 @@ export default function MasterKemasanPage() {
         isOpen={showOpnameModal}
         onClose={() => setShowOpnameModal(false)}
         onSuccess={() => {
+          fetchItems();
+          fetchPeriodicSummary();
+        }}
+      />
+
+      <BulkKemasanModal
+        isOpen={showBulkModal}
+        onClose={() => setShowBulkModal(false)}
+        onSuccess={() => {
+          setShowBulkModal(false);
           fetchItems();
           fetchPeriodicSummary();
         }}
@@ -386,8 +444,8 @@ function KemasanModal({ item, isLoading, onClose, onSubmit }: any) {
               onChange={e => setFormData({...formData, isPeriodic: e.target.value === 'true'})}
               disabled={isLoading}
             >
-              <option value="false">Harian (Perpetual) — Botol & Dus Utama (Dihitung real-time)</option>
-              <option value="true">Periodik (Mingguan) — Sealtape, Wrap, Stiker (Opname mingguan)</option>
+              <option value="false">Harian (Perpetual) - Botol & Dus Utama (Dihitung real-time)</option>
+              <option value="true">Periodik (Mingguan) - Sealtape, Wrap, Stiker (Opname mingguan)</option>
             </select>
           </div>
           <div>

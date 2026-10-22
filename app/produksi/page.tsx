@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '@/components/header/PageHeader';
 import { Button } from '@/components/ui/Button';
+import { Pagination } from '@/components/ui/Pagination';
 import { AddProductionModal } from '@/components/modals/AddProductionModal';
 import { BulkProductionModal } from '@/components/modals/BulkProductionModal';
 import { ProductionDetailModal } from '@/components/modals/ProductionDetailModal';
@@ -133,6 +134,30 @@ export default function ProduksiPage() {
     }
   }
 
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | 'all'>(25);
+
+  const filteredProductions = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return productions.filter((p) =>
+      !q ||
+      p.output?.sku?.code?.toLowerCase().includes(q) ||
+      p.output?.sku?.name?.toLowerCase().includes(q) ||
+      (p.notes && p.notes.toLowerCase().includes(q))
+    );
+  }, [productions, search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  const paginatedProductions = useMemo(() => {
+    if (pageSize === 'all') return filteredProductions;
+    const start = (page - 1) * pageSize;
+    return filteredProductions.slice(start, start + pageSize);
+  }, [filteredProductions, page, pageSize]);
+
   const productionToDelete = productions.find((p) => p.id === deleteConfirmId);
 
   return (
@@ -141,7 +166,15 @@ export default function ProduksiPage() {
         title="Produksi"
         subtitle="Pencatatan konversi bahan baku & kemasan menjadi produk jadi berdasarkan BOM."
         actions={
-          <div className="flex gap-3">
+          <div className="flex items-center gap-2.5">
+            <input
+              type="text"
+              placeholder="Cari SKU / nama / catatan..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="px-3.5 py-2 rounded border text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              style={{ borderColor: colors.neutral.border }}
+            />
             <Button variant="secondary" icon="📋" onClick={() => setShowBulkModal(true)}>
               Bulk Paste
             </Button>
@@ -154,7 +187,7 @@ export default function ProduksiPage() {
 
       <div className="flex-1 overflow-auto p-6">
         <div
-          className="rounded-lg border bg-white overflow-hidden shadow-sm"
+          className="rounded-lg border bg-white overflow-hidden shadow-xs"
           style={{ borderColor: colors.neutral.border }}
         >
           <table className="w-full text-sm">
@@ -173,16 +206,16 @@ export default function ProduksiPage() {
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-400">Loading data...</td>
                 </tr>
-              ) : productions.length === 0 ? (
+              ) : filteredProductions.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-32 text-center">
-                    <p style={{ color: '#B45309' }} className="font-medium text-lg">
-                      Belum ada produksi.
+                  <td colSpan={6} className="px-6 py-20 text-center">
+                    <p style={{ color: '#B45309' }} className="font-medium text-sm">
+                      {search ? 'Tidak ada data produksi yang cocok dengan pencarian.' : 'Belum ada produksi.'}
                     </p>
                   </td>
                 </tr>
               ) : (
-                productions.map((p) => (
+                paginatedProductions.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">{new Date(p.date).toLocaleDateString('id-ID')}</td>
                     <td className="px-6 py-4 font-bold">{p.output.sku.code}</td>
@@ -219,6 +252,17 @@ export default function ProduksiPage() {
               )}
             </tbody>
           </table>
+
+          {/* Pagination Controls */}
+          <Pagination
+            currentPage={page}
+            totalItems={filteredProductions.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[25, 50, 100, 'all']}
+            itemLabel="sesi produksi"
+          />
         </div>
       </div>
 

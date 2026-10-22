@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '@/components/header/PageHeader';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Button } from '@/components/ui/Button';
+import { Pagination } from '@/components/ui/Pagination';
 import { ConfirmDialog } from '@/components/modals/ConfirmDialog';
 import { AddAffiliateActivityModal } from '@/components/modals/AddAffiliateActivityModal';
 import { useToast } from '@/lib/toast';
@@ -146,13 +147,47 @@ export default function AffiliatePage() {
     }
   }
 
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | 'all'>(25);
+
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((item) =>
+      !q ||
+      (item.accountUsername && item.accountUsername.toLowerCase().includes(q)) ||
+      (item.realName && item.realName.toLowerCase().includes(q)) ||
+      item.sku?.code.toLowerCase().includes(q) ||
+      item.sku?.name.toLowerCase().includes(q) ||
+      (item.notes && item.notes.toLowerCase().includes(q))
+    );
+  }, [items, search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, fromDate, toDate]);
+
+  const paginatedItems = useMemo(() => {
+    if (pageSize === 'all') return filteredItems;
+    const start = (page - 1) * pageSize;
+    return filteredItems.slice(start, start + pageSize);
+  }, [filteredItems, page, pageSize]);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: colors.neutral.bg }}>
       <PageHeader
         title="Aktivitas Affiliate & Seeding"
         subtitle="Pencatatan barang keluar untuk promosi Affiliate dan Non-Affiliate. Terintegrasi langsung dengan mutasi stok SKU."
         actions={
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <input
+              type="text"
+              placeholder="Cari akun / nama / SKU / catatan..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="px-3.5 py-2 rounded border text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              style={{ borderColor: colors.neutral.border }}
+            />
             <DatePresetFilter
               fromDate={fromDate}
               toDate={toDate}
@@ -227,14 +262,14 @@ export default function AffiliatePage() {
                       Memuat data aktivitas...
                     </td>
                   </tr>
-                ) : items.length === 0 ? (
+                ) : filteredItems.length === 0 ? (
                   <tr>
                     <td colSpan={15} className="px-6 py-16 text-center text-gray-400 font-medium">
-                      Belum ada data aktivitas untuk periode ini. Klik <strong>Catat Aktivitas</strong> untuk menambahkan.
+                      {search ? 'Tidak ada data aktivitas yang cocok dengan pencarian.' : 'Belum ada data aktivitas untuk periode ini. Klik Catat Aktivitas untuk menambahkan.'}
                     </td>
                   </tr>
                 ) : (
-                  items.map((item) => {
+                  paginatedItems.map((item) => {
                     const isAffiliate = item.activityType === 'AFFILIATE';
                     return (
                       <tr key={item.id} className="hover:bg-gray-50/80 transition-colors">
@@ -305,6 +340,17 @@ export default function AffiliatePage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          <Pagination
+            currentPage={page}
+            totalItems={filteredItems.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[25, 50, 100, 'all']}
+            itemLabel="aktivitas"
+          />
         </div>
       </div>
 

@@ -304,6 +304,7 @@ export async function POST(req: Request) {
           const hppPerUnit = costHistory.avgCost ?? sku.hppPrice ?? 0;
           const computedHpp = hpp > 0 ? hpp : qty * hppPerUnit;
           const computedTotalHpp = totalHpp > 0 ? totalHpp : computedHpp;
+          const finalLaba = laba !== 0 ? laba : (netRevenue - computedTotalHpp);
 
           // Create new sale
           const sale = await tx.sale.create({
@@ -325,7 +326,7 @@ export async function POST(req: Request) {
               omset: netRevenue,
               hpp: computedHpp,
               totalHpp: computedTotalHpp,
-              laba,
+              laba: finalLaba,
               status: 'DITERIMA' as any,
               scannedByLogistic: false,
               financeMatched: true,

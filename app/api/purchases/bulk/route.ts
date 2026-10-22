@@ -6,25 +6,68 @@ import { parseRupiahNumber } from '@/lib/finance';
 export async function POST(req: Request) {
   try {
     const { text } = await req.json();
-    if (!text) return NextResponse.json({ error: 'No data' }, { status: 400 });
+    if (!text || typeof text !== 'string') {
+      return NextResponse.json({ error: 'Data tidak boleh kosong' }, { status: 400 });
+    }
 
     const lines = text.trim().split('\n');
+    const errors: string[] = [];
+    let skippedCount = 0;
 
     const results = await prisma.$transaction(async (tx) => {
       let count = 0;
-      for (const line of lines) {
-        const [dateStr, skuCode, qtyStr, priceStr, supplier, notes] = line.split('\t');
-        if (!dateStr || !skuCode || !qtyStr || !priceStr) continue;
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) continue;
 
-        const itemCode = skuCode.trim();
+        const cols = line.split('\t');
+        if (cols.length < 4) {
+          skippedCount++;
+          continue;
+        }
+
+        const [dateStr, skuCode, qtyStr, priceStr, supplier, notes] = cols;
+        const firstColUpper = dateStr?.trim().toUpperCase() || '';
+        const secondColUpper = skuCode?.trim().toUpperCase() || '';
+
+        // Abaikan baris header spreadsheet
+        if (
+          firstColUpper.startsWith('TANGGAL') ||
+          firstColUpper.startsWith('DATE') ||
+          firstColUpper.startsWith('NO') ||
+          secondColUpper.startsWith('KODE') ||
+          secondColUpper.startsWith('SKU')
+        ) {
+          continue;
+        }
+
+        const itemCode = skuCode?.trim();
+        if (!itemCode) {
+          skippedCount++;
+          continue;
+        }
+
         const sku = await tx.sKU.findUnique({ where: { code: itemCode } });
         const kemasan = !sku ? await tx.masterItemKemasan.findUnique({ where: { code: itemCode } }) : null;
 
-        if (!sku && !kemasan) continue;
+        if (!sku && !kemasan) {
+          errors.push(`Item "${itemCode}" tidak ditemukan di Master SKU maupun Master Kemasan`);
+          skippedCount++;
+          continue;
+        }
 
-        const date = new Date(dateStr.trim());
-        const qty = parseFloat(qtyStr.trim());
+        const parsedDate = new Date(dateStr.trim());
+        const date = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+        const cleanQty = parseFloat(qtyStr.trim().replace(',', '.'));
+        const qty = isNaN(cleanQty) || cleanQty <= 0 ? 0 : cleanQty;
         const unitPrice = parseRupiahNumber(priceStr);
+
+        if (qty <= 0 || unitPrice < 0) {
+          errors.push(`Baris "${itemCode}": Qty (${qty}) atau Harga Satuan (${unitPrice}) tidak valid`);
+          skippedCount++;
+          continue;
+        }
+
         const total = qty * unitPrice;
 
         // 1. Create Purchase
@@ -88,9 +131,20 @@ export async function POST(req: Request) {
       return count;
     });
 
-    return NextResponse.json({ success: true, count: results, message: `${results} pembelian berhasil diimpor` });
+    const msg = [
+      `${results} pembelian berhasil diimpor`,
+      skippedCount > 0 ? `${skippedCount} baris dilewati` : '',
+    ].filter(Boolean).join(', ');
+
+    return NextResponse.json({
+      success: true,
+      count: results,
+      skipped: skippedCount,
+      errors,
+      message: msg,
+    });
   } catch (error: any) {
     console.error('Bulk purchase import error:', error);
-    return NextResponse.json({ error: 'Failed to bulk import purchases' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Failed to bulk import purchases' }, { status: 500 });
   }
 }
