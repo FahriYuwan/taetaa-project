@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { PageHeader } from '@/components/header/PageHeader';
 import { Button, Badge } from '@/components/ui/Button';
 import { NumberInput } from '@/components/ui/NumberInput';
+import { Pagination } from '@/components/ui/Pagination';
 import { useToast } from '@/lib/toast';
 import { colors } from '@/lib/theme';
 import {
@@ -74,6 +75,107 @@ interface OpnameDetail {
   items: OpnameDetailItem[];
 }
 
+interface OpnameRowProps {
+  item: OpnameItem;
+  isSubmitting: boolean;
+  onToggleChecked: (skuId: string) => void;
+  onPhysicalStockChange: (skuId: string, value: number) => void;
+  onNotesChange: (skuId: string, text: string) => void;
+}
+
+const OpnameRow = memo(function OpnameRow({
+  item,
+  isSubmitting,
+  onToggleChecked,
+  onPhysicalStockChange,
+  onNotesChange,
+}: OpnameRowProps) {
+  const [localNotes, setLocalNotes] = useState(item.notes);
+
+  useEffect(() => {
+    setLocalNotes(item.notes);
+  }, [item.notes]);
+
+  const handleBlur = () => {
+    if (localNotes !== item.notes) {
+      onNotesChange(item.skuId, localNotes);
+    }
+  };
+
+  const diffColor =
+    item.diff > 0
+      ? 'text-emerald-600 font-bold'
+      : item.diff < 0
+      ? 'text-rose-600 font-bold'
+      : 'text-gray-400 font-medium';
+
+  return (
+    <tr
+      className="hover:bg-gray-50/50 transition-colors"
+      style={{
+        backgroundColor: item.checked ? 'rgba(59, 130, 246, 0.03)' : 'transparent',
+      }}
+    >
+      <td className="px-4 py-3 text-center">
+        <input
+          type="checkbox"
+          className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+          checked={item.checked}
+          onChange={() => onToggleChecked(item.skuId)}
+          disabled={isSubmitting}
+        />
+      </td>
+      <td className="px-4 py-3 font-mono font-bold text-gray-800">{item.code}</td>
+      <td className="px-4 py-3 text-gray-700 font-medium truncate max-w-[220px]" title={item.name}>
+        {item.name}
+      </td>
+      <td className="px-4 py-3 text-center">
+        <Badge type={item.type}>{item.type}</Badge>
+      </td>
+      <td className="px-4 py-3 text-right font-semibold text-gray-600 bg-gray-50/40">
+        {item.systemStock.toLocaleString('id-ID')}
+      </td>
+      <td className="px-4 py-2 text-center">
+        <div className="w-28 mx-auto">
+          <NumberInput
+            value={item.physicalStock}
+            onChange={(val) => onPhysicalStockChange(item.skuId, val)}
+            allowDecimal
+            className="border text-right text-sm font-bold focus:ring-2 focus:ring-blue-500 bg-white"
+            disabled={isSubmitting}
+          />
+        </div>
+      </td>
+      <td className={`px-4 py-3 text-right ${diffColor}`}>
+        {item.diff > 0
+          ? `+${item.diff.toLocaleString('id-ID')}`
+          : item.diff.toLocaleString('id-ID')}
+      </td>
+      <td className="px-4 py-2">
+        <input
+          type="text"
+          className="w-full px-2.5 py-1.5 border rounded text-xs bg-white text-gray-700 placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+          placeholder={
+            item.diff !== 0
+              ? 'Wajib/disarankan diisi alasan selisih...'
+              : 'Catatan kondisi barang...'
+          }
+          value={localNotes}
+          onChange={(e) => setLocalNotes(e.target.value)}
+          onBlur={handleBlur}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              handleBlur();
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+          disabled={isSubmitting}
+        />
+      </td>
+    </tr>
+  );
+});
+
 export default function StockOpnamePage() {
   const { showToast } = useToast();
 
@@ -88,7 +190,15 @@ export default function StockOpnamePage() {
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
   const [currentDraftNumber, setCurrentDraftNumber] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | 'all'>(50);
+
+  // Reset page to 1 whenever filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filterType, statusFilter, searchQuery]);
 
   // Confirmation Modal State (Posting)
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -261,8 +371,8 @@ export default function StockOpnamePage() {
     showToast({ message: 'Memulai sesi Stock Opname baru', type: 'info' });
   }
 
-  // Input Handlers
-  function handlePhysicalStockChange(skuId: string, value: number) {
+  // Input Handlers (memoized callbacks to avoid re-rendering unrelated rows)
+  const handlePhysicalStockChange = useCallback((skuId: string, value: number) => {
     setItems((prev) =>
       prev.map((item) => {
         if (item.skuId === skuId) {
@@ -272,9 +382,9 @@ export default function StockOpnamePage() {
         return item;
       })
     );
-  }
+  }, []);
 
-  function handleItemToggleChecked(skuId: string) {
+  const handleItemToggleChecked = useCallback((skuId: string) => {
     setItems((prev) =>
       prev.map((item) => {
         if (item.skuId === skuId) {
@@ -283,18 +393,9 @@ export default function StockOpnamePage() {
         return item;
       })
     );
-  }
+  }, []);
 
-  function handleSelectAll(select: boolean) {
-    const visibleSkuIds = new Set(filteredItems.map((i) => i.skuId));
-    setItems((prev) =>
-      prev.map((item) =>
-        visibleSkuIds.has(item.skuId) ? { ...item, checked: select } : item
-      )
-    );
-  }
-
-  function handleItemNotesChange(skuId: string, text: string) {
+  const handleItemNotesChange = useCallback((skuId: string, text: string) => {
     setItems((prev) =>
       prev.map((item) => {
         if (item.skuId === skuId) {
@@ -303,7 +404,7 @@ export default function StockOpnamePage() {
         return item;
       })
     );
-  }
+  }, []);
 
   // Save / Update Draft Action (Does NOT alter stock)
   async function handleSaveDraft(silent = false): Promise<string | null> {
@@ -421,26 +522,86 @@ export default function StockOpnamePage() {
     }
   }
 
-  // Calculations for Summary Bar
-  const totalItems = items.length;
-  const checkedItems = items.filter((i) => i.checked);
-  const checkedCount = checkedItems.length;
-  const matchCount = checkedItems.filter((i) => i.diff === 0).length;
-  const diffCount = checkedItems.filter((i) => i.diff !== 0).length;
-  const diffItems = checkedItems.filter((i) => i.diff !== 0);
+  // Optimized Calculations with useMemo (single-pass metric calculation)
+  const { totalItems, checkedCount, matchCount, diffCount, diffItems } = useMemo(() => {
+    let checked = 0;
+    let match = 0;
+    let diff = 0;
+    const diffList: OpnameItem[] = [];
+
+    for (const item of items) {
+      if (item.checked) {
+        checked++;
+        if (item.diff === 0) {
+          match++;
+        } else {
+          diff++;
+          diffList.push(item);
+        }
+      }
+    }
+
+    return {
+      totalItems: items.length,
+      checkedCount: checked,
+      matchCount: match,
+      diffCount: diff,
+      diffItems: diffList,
+    };
+  }, [items]);
 
   // Filtered Items for Display
-  const filteredItems = items.filter((item) => {
-    const matchesType = filterType === 'all' || item.type === filterType;
-    const matchesSearch =
-      searchQuery === '' ||
-      item.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesType && matchesSearch;
-  });
+  const filteredItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return items.filter((item) => {
+      const matchesType = filterType === 'all' || item.type === filterType;
+      const matchesSearch =
+        !q ||
+        item.code.toLowerCase().includes(q) ||
+        item.name.toLowerCase().includes(q);
+
+      let matchesStatus = true;
+      if (statusFilter === 'diff') {
+        matchesStatus = item.diff !== 0;
+      } else if (statusFilter === 'match') {
+        matchesStatus = item.diff === 0;
+      } else if (statusFilter === 'checked') {
+        matchesStatus = item.checked;
+      } else if (statusFilter === 'unchecked') {
+        matchesStatus = !item.checked;
+      }
+
+      return matchesType && matchesSearch && matchesStatus;
+    });
+  }, [items, filterType, searchQuery, statusFilter]);
+
+  // Paginated Items for Virtualized Rendering
+  const paginatedItems = useMemo(() => {
+    if (pageSize === 'all') return filteredItems;
+    const start = (page - 1) * pageSize;
+    return filteredItems.slice(start, start + pageSize);
+  }, [filteredItems, page, pageSize]);
 
   const allVisibleChecked =
-    filteredItems.length > 0 && filteredItems.every((i) => i.checked);
+    paginatedItems.length > 0 && paginatedItems.every((i) => i.checked);
+
+  const handleSelectAll = useCallback((select: boolean) => {
+    const targetIds = new Set(paginatedItems.map((i) => i.skuId));
+    setItems((prev) =>
+      prev.map((item) =>
+        targetIds.has(item.skuId) ? { ...item, checked: select } : item
+      )
+    );
+  }, [paginatedItems]);
+
+  const handleSelectAllFiltered = useCallback((select: boolean) => {
+    const targetIds = new Set(filteredItems.map((i) => i.skuId));
+    setItems((prev) =>
+      prev.map((item) =>
+        targetIds.has(item.skuId) ? { ...item, checked: select } : item
+      )
+    );
+  }, [filteredItems]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: colors.neutral.bg }}>
@@ -548,15 +709,29 @@ export default function StockOpnamePage() {
             </div>
           )}
 
-          {/* Summary Metric Cards */}
+          {/* Summary Metric Cards (Interactive Filters) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-lg border shadow-sm" style={{ borderColor: colors.neutral.border }}>
+            <div
+              onClick={() => setStatusFilter('all')}
+              className={`bg-white p-4 rounded-lg border shadow-xs cursor-pointer transition-all hover:shadow-sm ${
+                statusFilter === 'all' ? 'ring-2 ring-blue-500 border-blue-500 bg-blue-50/20' : ''
+              }`}
+              style={{ borderColor: statusFilter === 'all' ? undefined : colors.neutral.border }}
+              title="Klik untuk tampilkan semua SKU"
+            >
               <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total Item SKU</div>
               <div className="text-2xl font-bold text-gray-800 mt-1">{totalItems}</div>
               <div className="text-xs text-gray-500 mt-0.5">Semua SKU aktif</div>
             </div>
 
-            <div className="bg-white p-4 rounded-lg border shadow-sm" style={{ borderColor: colors.neutral.border }}>
+            <div
+              onClick={() => setStatusFilter(statusFilter === 'checked' ? 'all' : 'checked')}
+              className={`bg-white p-4 rounded-lg border shadow-xs cursor-pointer transition-all hover:shadow-sm ${
+                statusFilter === 'checked' ? 'ring-2 ring-blue-500 border-blue-500 bg-blue-50/30' : ''
+              }`}
+              style={{ borderColor: statusFilter === 'checked' ? undefined : colors.neutral.border }}
+              title="Klik untuk filter hanya SKU yang sudah dicek"
+            >
               <div className="text-[11px] font-bold text-blue-600 uppercase tracking-wider">Sudah Dicek</div>
               <div className="text-2xl font-bold text-blue-700 mt-1">
                 {checkedCount}
@@ -567,13 +742,27 @@ export default function StockOpnamePage() {
               </div>
             </div>
 
-            <div className="bg-white p-4 rounded-lg border shadow-sm" style={{ borderColor: colors.neutral.border }}>
+            <div
+              onClick={() => setStatusFilter(statusFilter === 'match' ? 'all' : 'match')}
+              className={`bg-white p-4 rounded-lg border shadow-xs cursor-pointer transition-all hover:shadow-sm ${
+                statusFilter === 'match' ? 'ring-2 ring-emerald-500 border-emerald-500 bg-emerald-50/20' : ''
+              }`}
+              style={{ borderColor: statusFilter === 'match' ? undefined : colors.neutral.border }}
+              title="Klik untuk filter SKU yang stoknya cocok (selisih = 0)"
+            >
               <div className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Sesuai (Stok Cocok)</div>
               <div className="text-2xl font-bold text-emerald-700 mt-1">{matchCount}</div>
               <div className="text-xs text-emerald-600 mt-0.5">Selisih = 0</div>
             </div>
 
-            <div className="bg-white p-4 rounded-lg border shadow-sm" style={{ borderColor: colors.neutral.border }}>
+            <div
+              onClick={() => setStatusFilter(statusFilter === 'diff' ? 'all' : 'diff')}
+              className={`bg-white p-4 rounded-lg border shadow-xs cursor-pointer transition-all hover:shadow-sm ${
+                statusFilter === 'diff' ? 'ring-2 ring-amber-500 border-amber-500 bg-amber-50/30' : ''
+              }`}
+              style={{ borderColor: statusFilter === 'diff' ? undefined : colors.neutral.border }}
+              title="Klik untuk filter SKU yang memiliki selisih stok"
+            >
               <div className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Ada Selisih</div>
               <div className="text-2xl font-bold text-amber-700 mt-1">{diffCount}</div>
               <div className="text-xs text-amber-600 mt-0.5">Perlu penyesuaian stok</div>
@@ -581,7 +770,7 @@ export default function StockOpnamePage() {
           </div>
 
           {/* General Notes & Controls Bar */}
-          <div className="bg-white p-4 rounded-lg border shadow-sm flex flex-col md:flex-row gap-4 items-start md:items-center justify-between" style={{ borderColor: colors.neutral.border }}>
+          <div className="bg-white p-4 rounded-lg border shadow-xs flex flex-col md:flex-row gap-4 items-start md:items-center justify-between" style={{ borderColor: colors.neutral.border }}>
             <div className="flex-1 w-full">
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
                 Catatan Sesi Rekonsiliasi (General Notes)
@@ -596,7 +785,7 @@ export default function StockOpnamePage() {
               />
             </div>
 
-            <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
                   Filter Tipe
@@ -610,6 +799,23 @@ export default function StockOpnamePage() {
                   <option value="RAW">RAW (Bahan Baku)</option>
                   <option value="PRODUCT">PRODUCT (Setengah Jadi)</option>
                   <option value="PACKAGE">PACKAGE (Produk Jadi Siap Jual)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
+                  Status Opname
+                </label>
+                <select
+                  className="px-3 py-2 border rounded-md text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">Semua Status</option>
+                  <option value="diff">Ada Selisih (Diff ≠ 0)</option>
+                  <option value="match">Stok Sesuai (Diff = 0)</option>
+                  <option value="checked">Sudah Dicek</option>
+                  <option value="unchecked">Belum Dicek</option>
                 </select>
               </div>
 
@@ -677,78 +883,31 @@ export default function StockOpnamePage() {
                       </td>
                     </tr>
                   ) : (
-                    filteredItems.map((item) => {
-                      const diffColor =
-                        item.diff > 0
-                          ? 'text-emerald-600 font-bold'
-                          : item.diff < 0
-                          ? 'text-rose-600 font-bold'
-                          : 'text-gray-400 font-medium';
-
-                      return (
-                        <tr
-                          key={item.skuId}
-                          className="hover:bg-gray-50/50 transition-colors"
-                          style={{
-                            backgroundColor: item.checked ? 'rgba(59, 130, 246, 0.03)' : 'transparent',
-                          }}
-                        >
-                          <td className="px-4 py-3 text-center">
-                            <input
-                              type="checkbox"
-                              className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-                              checked={item.checked}
-                              onChange={() => handleItemToggleChecked(item.skuId)}
-                              disabled={isSubmitting}
-                            />
-                          </td>
-                          <td className="px-4 py-3 font-mono font-bold text-gray-800">{item.code}</td>
-                          <td className="px-4 py-3 text-gray-700 font-medium truncate max-w-[220px]" title={item.name}>
-                            {item.name}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <Badge type={item.type}>{item.type}</Badge>
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold text-gray-600 bg-gray-50/40">
-                            {item.systemStock.toLocaleString('id-ID')}
-                          </td>
-                          <td className="px-4 py-2 text-center">
-                            <div className="w-28 mx-auto">
-                              <NumberInput
-                                value={item.physicalStock}
-                                onChange={(val) => handlePhysicalStockChange(item.skuId, val)}
-                                allowDecimal
-                                className="border text-right text-sm font-bold focus:ring-2 focus:ring-blue-500 bg-white"
-                                disabled={isSubmitting}
-                              />
-                            </div>
-                          </td>
-                          <td className={`px-4 py-3 text-right ${diffColor}`}>
-                            {item.diff > 0
-                              ? `+${item.diff.toLocaleString('id-ID')}`
-                              : item.diff.toLocaleString('id-ID')}
-                          </td>
-                          <td className="px-4 py-2">
-                            <input
-                              type="text"
-                              className="w-full px-2.5 py-1.5 border rounded text-xs bg-white text-gray-700 placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                              placeholder={
-                                item.diff !== 0
-                                  ? 'Wajib/disarankan diisi alasan selisih...'
-                                  : 'Catatan kondisi barang...'
-                              }
-                              value={item.notes}
-                              onChange={(e) => handleItemNotesChange(item.skuId, e.target.value)}
-                              disabled={isSubmitting}
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })
+                    paginatedItems.map((item) => (
+                      <OpnameRow
+                        key={item.skuId}
+                        item={item}
+                        isSubmitting={isSubmitting}
+                        onToggleChecked={handleItemToggleChecked}
+                        onPhysicalStockChange={handlePhysicalStockChange}
+                        onNotesChange={handleItemNotesChange}
+                      />
+                    ))
                   )}
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            <Pagination
+              currentPage={page}
+              totalItems={filteredItems.length}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[25, 50, 100, 200, 'all']}
+              itemLabel="SKU"
+            />
           </div>
         </div>
       ) : (

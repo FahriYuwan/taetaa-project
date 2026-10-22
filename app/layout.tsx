@@ -27,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id">
+    <html lang="id" data-scroll-behavior="smooth">
       <body style={{ margin: 0, padding: 0 }}>
         <SidebarProvider>
           <AppLayout>{children}</AppLayout>

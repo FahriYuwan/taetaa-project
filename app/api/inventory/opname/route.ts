@@ -4,21 +4,36 @@ import prisma from '@/lib/db';
 // GET: list all SKUs with current system stock (for building a new opname form)
 export async function GET() {
   try {
-    const skus = await prisma.sKU.findMany({
-      include: { inventory: true },
-      orderBy: { code: 'asc' },
-    });
+    const [skus, inventoryAgg] = await Promise.all([
+      prisma.sKU.findMany({
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          type: true,
+        },
+        orderBy: { code: 'asc' },
+      }),
+      prisma.inventory.groupBy({
+        by: ['skuId'],
+        _sum: { movement: true },
+      }),
+    ]);
 
-    const data = skus.map(sku => {
-      const systemStock = sku.inventory.reduce((sum, inv) => sum + inv.movement, 0);
-      return {
-        id: sku.id,
-        code: sku.code,
-        name: sku.name,
-        type: sku.type,
-        systemStock,
-      };
-    });
+    const stockMap = new Map<string, number>();
+    for (const inv of inventoryAgg) {
+      if (inv.skuId) {
+        stockMap.set(inv.skuId, inv._sum.movement ?? 0);
+      }
+    }
+
+    const data = skus.map(sku => ({
+      id: sku.id,
+      code: sku.code,
+      name: sku.name,
+      type: sku.type,
+      systemStock: stockMap.get(sku.id) ?? 0,
+    }));
 
     return NextResponse.json(data);
   } catch (error) {
